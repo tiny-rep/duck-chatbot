@@ -1,0 +1,37 @@
+let testMarkdownText = `
+## 数学公式示例
+
+行内公式：$E=mc^2$
+
+块级公式：
+$$
+\\sum_{i=1}^n i = \\frac{n(n+1)}{2}
+$$
+
+常见公式：
+- 二次方程求根公式：$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$
+- 欧拉公式：$e^{i\\pi} + 1 = 0$
+
+---
+
+## 流程图示例
+
+\`\`\`mermaid
+graph TD
+  A[开始] --> B{条件判断}
+  B -->|是| C[执行操作1]
+  B -->|否| D[执行操作2]
+  C --> E[结束]
+  D --> E
+\`\`\`
+
+---
+
+## 分割线示例
+
+上面是分割线
+***
+下面也是分割线`
+
+// testMarkdownText = '' // 清空测试文本，切换为非演示模式
+export default testMarkdownText

@@ -1,0 +1,19 @@
+<template>
+	<view>
+		<uni-ai-icon @click.stop="showMenu" code="e622" color="#555" size="18"></uni-ai-icon>
+	</view>
+</template>
+
+<script lang="uts" setup>
+	import uniImX from '@/uni_modules/uni-im-x/sdk';
+	import uniAiIcon from '@/chatbot/components/uni-ai-icon/uni-ai-icon.uvue'
+	
+	const showMenu = () => {
+		// 显示菜单
+		uniImX.ext.showMenu = !uniImX.ext.getBoolean('showMenu',false)
+	}
+</script>
+
+<style lang="scss">
+
+</style>

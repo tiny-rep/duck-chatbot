@@ -1,0 +1,34 @@
+<template>
+	<view>
+		<image class="logo" src="/static/logo.png"></image>
+		<text class="title">{{title}}</text>
+		<button @click="navHome()" >Home</button>
+	</view>
+</template>
+
+<script setup lang="uts">
+	const title = ref('Hello')
+	function navHome() {
+		uni.showModal({
+			content: '@/chatbo/index/index',
+			showCancel: false
+		});
+		uni.navigateTo({
+			url:"/chatbot/index/index"
+		})
+	}
+</script>
+
+<style>
+	.logo {
+		height: 100px;
+		width: 100px;
+		margin: 100px auto 25px auto;
+	}
+
+	.title {
+		font-size: 18px;
+		color: #8f8f94;
+		text-align: center;
+	}
+</style>
