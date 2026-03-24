@@ -1,0 +1,94 @@
+/**
+ * API类型定义
+ * 统一管理所有API相关的类型定义
+ */
+
+/**
+ * API响应类型
+ */
+export type ApiResponse<T> = {
+  code: string,
+  data: T,
+  message: string
+}
+
+/**
+ * 分页器类型
+ */
+export type Paginator = {
+  current_page: number,
+  page_size: number,
+  total_page: number,
+  total_record: number
+}
+
+/**
+ * 分页响应数据类型
+ */
+export type PaginationData<T> = {
+  list: T[],
+  paginator: Paginator
+}
+
+/**
+ * 步骤数据类型
+ */
+export type Step = {
+  id: string,
+  message_id: string,
+  position: number,
+  event: string,
+  thought: string,
+  observation: string,
+  latency: number,
+  token_count: number,
+  created_at: number
+}
+
+/**
+ * 消息数据类型
+ */
+export type Message = {
+  id: string,
+  conversation_id: string,
+  query: string,
+  answer: string,
+  answer_token_count: number,
+  steps: Step[],
+  response_latency: number,
+  updated_at: number,
+  created_at: number
+}
+
+/**
+ * 模型配置类型
+ */
+export type ModelConfig = {
+  provider: string,
+  model: string
+}
+
+/**
+ * 应用数据类型
+ */
+export type App = {
+  id: string,
+  name: string,
+  icon: string,
+  description: string,
+  ex_link_token: string,
+  preset_prompt: string,
+  model_config: ModelConfig,
+  updated_at: number,
+  created_at: number
+}
+
+/**
+ * 基础请求配置
+ */
+export type RequestConfig = {
+  headers?: object,
+  params?: object,
+  data?: any,
+  accessToken?: string
+}
