@@ -1,0 +1,243 @@
+import { CustomProviderAdapter, RequestAiCoMessage, CustomProviderCallbacks, Chunk } from '@/chatbot/types.uts';
+import utils from '@/chatbot/sdk/utils.uts';
+
+// 解析流式数据
+function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) => void, errorCallback : (err : UTSJSONObject) => void, doneCallback : () => void) {
+	utils.uniGetDispatcher("io", () => {
+		const chunkText : string = new TextDecoder().decode(chunkData)
+		// console.error('chunkText======', chunkText)
+		const lines : string[] = chunkText.split('\n')
+		// console.error('lines======', lines, lines.length)
+		
+		// 临时存储 event 和 data
+		let event = ''
+		let data = ''
+		
+		try {
+			lines.forEach(line => {
+				line = line.trim()
+				if (line.startsWith('event:')) {
+					event = line.slice(6).trim()
+				} else if (line.startsWith("data:")) {
+					data = line.slice(5).trim()
+				}
+
+				if (line === '') {
+					if (event !== '' && data !== '') {
+						// 处理完整的事件数据
+            try {
+              // 解析数据
+              const agentData = JSON.parse(data);
+              // todo: 格式不对，要调整
+              // 转换为系统需要的 Chunk 格式
+              const chunk: Chunk = {
+                choices: [{
+                  delta: {
+                    content: agentData.answer || '',
+                    reasoning_content: agentData.thought || ''
+                  }
+                }]
+              };
+              
+              callback(chunk);
+            } catch (e) {
+              console.error('JSON.parse error', e, 'data:', data);
+            }
+						// 重置 event 和 data
+						event = ''
+						data = ''
+					}
+				} else if (line.startsWith('{"error"')) {
+					// 兼容原有格式的错误处理
+					// console.error('parseChunkData error', line)
+					let info : UTSJSONObject = {}
+					try {
+						info = JSON.parse<UTSJSONObject>(line) as UTSJSONObject
+					} catch (e) {
+						console.error('JSON.parse error', e, 'line:', line)
+					}
+					errorCallback(info.error! as UTSJSONObject)
+					doneCallback()
+				}
+			})
+		} catch (e) {
+			console.error('parseChunkData error:', e);
+			errorCallback({
+				errCode: -100,
+				errMsg: '解析数据失败'
+			} as UTSJSONObject);
+			doneCallback();
+		}
+	})
+}
+
+/**
+ * AI Agent OS 平台适配器
+ * 用于接入返回格式为 "event: agent_message\ndata: {\"id\": \"...\", ...}\n" 的流式接口
+ */
+export class AiAgentOsAdapter extends CustomProviderAdapter {
+    private requestTask: RequestTask | null = null;
+    
+    constructor() {
+        super();
+    }
+
+    /**
+     * 发起请求
+     * @param messages 消息列表
+     * @param model 模型名称
+     * @param chat_id 对话ID
+     * @param callbacks 回调函数
+     */
+    async request(messages: RequestAiCoMessage[], model: string, chat_id: string, callbacks: CustomProviderCallbacks): Promise<boolean> {
+        return new Promise<boolean>((resolve) => {
+            let resolveFn = (_: UTSJSONObject) => { resolve(true); };
+            let rejectFn = (err: UTSJSONObject) => { resolve(false); };
+
+            // 从 messages 中提取最后一条用户消息作为 query
+            let query = '';
+            if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                if (lastMessage.role === 'user') {
+                    if (typeof lastMessage.content === 'string') {
+                        query = lastMessage.content;
+                    } else if (Array.isArray(lastMessage.content)) {
+                        // 处理多模态内容，只取文本部分
+                        const textContent = lastMessage.content.find(item => item.type === 'text');
+                        if (textContent) {
+                            query = textContent.text;
+                        }
+                    }
+                }
+            }
+
+            // 构建请求数据，根据 API 文档的要求
+            const requestData = {
+                app_id: '5e7834dc-bbca-4ee5-9591-8f297f5acded', // 需要根据实际情况修改
+                end_user_id: 'e1baf52a-1be2-4b93-ad62-6fad72f1ec37', // 需要根据实际情况修改
+                conversation_id: chat_id || undefined,
+                query: query,
+                stream: true
+            };
+
+            // 使用 uni.request 发起请求，参考 requestAlServer 方法的实现
+            this.requestTask = uni.request({
+                // API 文档中指定的接口地址
+                url: '/openapi/chat',
+                method: 'POST',
+                dataType: 'text',
+                data: requestData,
+                // @ts-ignore
+                enableChunked: true,
+                header: {
+                    'Content-Type': 'application/json',
+                    // API 文档中指定的授权方式
+                    'Authorization': 'Bearer your-api-key' // 需要根据实际情况修改
+                },
+                success: (res: RequestSuccess<any>) => {
+                    // console.log('request success', res)
+                    if (!res.data) {
+                        // 非流式数据处理
+                        try {
+                            const strData = typeof res.data == 'string' ? res.data : JSON.stringify(res.data);
+                            const response = JSON.parse(strData);
+                            
+                            if (response.code === 'success' && response.data) {
+                                // 转换为系统需要的 Chunk 格式
+                                const chunk: Chunk = {
+                                    choices: [{
+                                        message: {
+                                            content: response.data.answer || ''
+                                        }
+                                    }]
+                                };
+                                callbacks.onChunk?.(chunk);
+                                callbacks.onDone?.({} as UTSJSONObject);
+                                resolveFn({} as UTSJSONObject);
+                            } else {
+                                const errInfo: UTSJSONObject = {
+                                    errCode: -102,
+                                    errMsg: response.message || '请求失败'
+                                };
+                                callbacks.onError?.(errInfo);
+                                rejectFn(errInfo);
+                            }
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                            const errInfo: UTSJSONObject = {
+                                errCode: -101,
+                                errMsg: '数据解析失败'
+                            };
+                            callbacks.onError?.(errInfo);
+                            rejectFn(errInfo);
+                        }
+                    } else {
+                        if (res.data instanceof UTSJSONObject) {
+                            // 部分情况下（内容包含违禁词时），流式响应未返回数据，就立即结束请求。此时错误信息会放在 data 中
+                            const error = res.data.getJSON('error');
+                            if (error != null) {
+                                // console.log('error', error)
+                                const errInfo: UTSJSONObject = {
+                                    errCode: error.getString('code', 'unknown'),
+                                    errMsg: error.getString('message', '未知错误')
+                                };
+                                callbacks.onError?.(errInfo);
+                                rejectFn(errInfo);
+                                return;
+                            }
+                        }
+                        resolveFn({} as UTSJSONObject);
+                    }
+                },
+                fail: (err: RequestFail) => {
+                    console.error('request fail', err);
+                    const errInfo: UTSJSONObject = {
+                        errCode: err.errCode,
+                        errMsg: err.errMsg
+                    };
+                    rejectFn(errInfo);
+                    callbacks.onError?.(errInfo);
+                }
+            });
+
+            // 处理流式响应
+            if (this.requestTask) {
+                // @ts-ignore
+                this.requestTask.onChunkReceived((chunk: RequestTaskOnChunkReceivedListenerResult) => {
+                    // 使用与 requestAlServer 相同的 parseChunkData 函数解析数据
+                    parseChunkData(chunk.data as ArrayBuffer, 
+                        (chunkObj: Chunk) => {
+                            callbacks.onChunk?.(chunkObj);
+                        },
+                        (err: UTSJSONObject) => {
+                            err.errCode = err.code ?? '';
+                            err.errMsg = err.message ?? '未知错误';
+                            // console.error('parseChunkData error', err);
+                            callbacks.onError?.(err);
+                            rejectFn(err);
+                        },
+                        () => {
+                            // console.log('流式数据结束');
+                            callbacks.onDone?.({} as UTSJSONObject);
+                        }
+                    );
+                });
+            }
+        });
+    }
+
+    /**
+     * 中止请求
+     */
+    abort(): void {
+        if (this.requestTask) {
+            this.requestTask.abort();
+            this.requestTask = null;
+        }
+    }
+
+    /**
+     * 是否支持会话标题更新
+     */
+    supportsTitleUpdate: boolean = true;
+}

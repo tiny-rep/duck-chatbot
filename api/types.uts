@@ -84,6 +84,16 @@ export type App = {
 }
 
 /**
+ * 会话数据类型
+ */
+export type Conversation = {
+  id: string,
+  name: string,
+  summary: string,
+  created_at: number
+}
+
+/**
  * 基础请求配置
  */
 export type RequestConfig = {

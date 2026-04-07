@@ -1,25 +1,28 @@
 import {reactive} from 'vue';
 import {LLMModel, Provider, DefaultLLM, LLmTokenInfo, Userinfo} from '@/chatbot/types.uts';
+import { getAppsList } from '@/api/service.uts';
 // 1. 定义左侧菜单区域下方的用户头像信息
 export const currentUser: Userinfo = reactive<Userinfo>({})
-// 这里以uni-id的用户信息绑定为例，你自己的系统如果不是基于 unicloud 的，请参考此方法修改
-// import {watch} from 'vue';
-// 导入 uni-id 中的用户信息
-// import {state as uniIdState} from '@/uni_modules/uni-id-pages-x/store.uts';
-// 监听用户信息变化，更新 currentUser 对象
-// watch((): UTSJSONObject => uniIdState.userInfo,(userInfo: UTSJSONObject)=>{
-// 	currentUser._id = userInfo.getString('_id')
-// 	currentUser.nickname = userInfo.getString('nickname')
-// 	// 根据 file_id 获取文件的 url
-// 	const avatarFileUrl = userInfo.getString('avatar_file.url')
-// 	if (avatarFileUrl != null) {
-// 		uniCloud.getTempFileURL({fileList: [avatarFileUrl]}).then((res) => {
-// 			currentUser.avatar_file = {url: res.fileList[0].tempFileURL}
-// 		})
-// 	} else {
-// 		currentUser.avatar_file = null
-// 	}
-// }, {deep: true, immediate: true})
+
+// 从本地存储获取用户信息并更新 currentUser
+function updateCurrentUserFromStorage() {
+  try {
+    const userInfo = uni.getStorageSync('userInfo');
+    if (userInfo) {
+      // 更新用户信息
+      currentUser._id = userInfo.end_user_id;
+      currentUser.nickname = userInfo.nickname;
+      // 如果有头像信息
+      if (userInfo.avatar_file) {
+        currentUser.avatar_file = userInfo.avatar_file;
+      } else {
+        currentUser.avatar_file = null;
+      }
+    }
+  } catch (error) {
+    console.error('获取本地用户信息失败:', error);
+  }
+}
 
 // 2. 点击左侧菜单区域下方的用户头像信息后跳转的页面路径
 export const userCenterPage = '/uni_modules/uni-id-pages-x/pages/userinfo/userinfo?showLoginManage=true'
@@ -30,131 +33,90 @@ export const userCenterPage = '/uni_modules/uni-id-pages-x/pages/userinfo/userin
  * 注意需要在，目录：`/uni_modules/uni-ai-x/static/ai-provider/${provider}.png` 中添加对应的logo图片
  * 默认以第一个为默认模型
  */
-const bailianTokenInfo: LLmTokenInfo = {token: '', expireTime: 0}
-const qiniuTokenInfo: LLmTokenInfo = {token: '', expireTime: 0}
+const aiagentOsTokenInfo: LLmTokenInfo = {token: '', expireTime: 0}
+
+// 初始化 aiagent-os 提供商配置
+const aiagentOsProvider: Provider = {
+	models: [], // 初始为空，后续会通过 getAppsList 动态填充
+	description: 'AI Agent OS - 智能代理操作系统',
+	baseURL: "/openapi/chat",
+	async getToken(): Promise<string> {
+		// AI Agent OS 使用固定的 token
+		return 'bearer llmops-v1/f4OAwyi5KynFsVQVCCldu5T9-c14hreAZH9eBhdtbyTSCoIsAZ3-HSGQhXLnCqHV';
+	}
+};
+
+// 定义 providerNameList 为 reactive 数组
+const providerNameList = reactive<string[]>([]);
+const defaultLLM = reactive<DefaultLLM>({});
+
+// 创建 llmModelMap
 const llmModelMap = new Map<string, Provider>([
-	// 七牛
-	[
-		'qiniu', {
-			models: [
-				{ name: 'deepseek-v3'},
-				{ name: 'deepseek-r1', thinking: true},
-				{ name: 'doubao-seed-1.6', image: true},
-				{ name: 'gpt-oss-120b'}
-			],
-			description: '七牛云-专注云计算和大数据',
-			baseURL: "https://openai.qiniu.com/v1/chat/completions",
-			async getToken(): Promise<string> {
-				// 如果token存在且未过期，则直接返回
-				if (qiniuTokenInfo.expireTime > Date.now()) {
-					return qiniuTokenInfo.token
-				}
+	// AI Agent OS
+	['aiagent-os', aiagentOsProvider]
+]);
+
+// 动态从 getAppsList 获取模型列表
+async function loadAppsList() {
+	try {
+		const response = await getAppsList();
+		if (response.code === 'success' && response.data) {
+			// 清空现有模型
+			aiagentOsProvider.models = [];
 			
-				// unicloud项目 通过uni-ai-x-co 获取临时token
-				const uniAiChatCo = uniCloud.importObject("uni-ai-x-co", { customUI: true })
-				try {
-					const getTmpTokenRes = await uniAiChatCo.getTmpToken({provider: "qiniu"})
-					if (getTmpTokenRes.errCode != 0) {
-						throw new Error('获取临时token失败')
-					}
-					const tmpToken = getTmpTokenRes.getString('data.token', '')
-					const expiresAt = getTmpTokenRes.getNumber('data.expiresAt', 0)
-					qiniuTokenInfo.token = tmpToken
-					qiniuTokenInfo.expireTime = expiresAt
-					return tmpToken
-				} catch (e: any) {
-					// const error = JSON.parse<UniCloudError>(JSON.stringify(e)) as UniCloudError
-					// console.error('uni-ai-x-co 请求失败', error, error.message)
-					throw new Error('获取临时token失败')
-				}
-				
+			// 添加从接口获取的模型
+			response.data.list.forEach((app: any) => {
+				aiagentOsProvider.models.push({
+					name: app.name,
+					ex_link_token: app.ex_link_token,
+					model_config: app.model_config,
+					preset_prompt: app.preset_prompt,
+					description: app.description,
+					icon: app.icon,
+					id: app.id
+				});
+			});
 			
-				// 非 unicloud项目 请求自己的服务器的接口得到临时 token 例如
-				/*
-				const res = await uni.request({
-					url: 'https://your-server.com/get-token',
-					method: 'GET'
-				})
-				if (res.statusCode != 200) {
-					throw new Error('获取临时token失败')
-				}
-				const tmpToken = res.getString('data.token', '')
-				const expiresAt = res.getNumber('data.expiresAt', 0)
-				qiniuTokenInfo.token = tmpToken
-				qiniuTokenInfo.expireTime = expiresAt
-				return tmpToken
-				*/
-			}
+			 // 更新 providerNameList
+      providerNameList.splice(0, providerNameList.length);
+      llmModelMap.forEach((_, key: string) => {
+        providerNameList.push(key);
+      });
+      
+      // 更新 defaultLLM
+      if (providerNameList.length > 0) {
+        defaultLLM.provider = providerNameList[0]!;
+        const models = llmModelMap.get(providerNameList[0])?.models;
+        if (models && models.length > 0) {
+          defaultLLM.model = models[0].name!;
+        }
+      }
+
+			console.log('成功加载应用列表:', aiagentOsProvider.models);
+		} else {
+			console.error('加载应用列表失败:', response.message);
 		}
-	],
-	// 阿里云百炼
-	[
-		'bailian', {
-			models: [
-				{ name: 'deepseek-v3'},
-				{ name: 'deepseek-r1', thinking: true },
-				{ name: 'qwen-turbo'},
-				{ name: 'qwen-plus', thinking: true }
-			],
-			description: '阿里云百炼 - 专注AI技术研究和应用',
-			baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-			async getToken(): Promise<string> {
-				// 如果token存在且未过期，则直接返回
-				if (bailianTokenInfo.expireTime > Date.now()) {
-					return bailianTokenInfo.token
-				}
-
-				// unicloud项目 通过uni-ai-x-co 获取临时token
-				const uniAiChatCo = uniCloud.importObject("uni-ai-x-co", { customUI: true })
-				try {
-					const getTmpTokenRes = await uniAiChatCo.getTmpToken({provider: "aliyun-bailian"})
-					if (getTmpTokenRes.errCode != 0) {
-						throw new Error('获取临时token失败')
-					}
-					const tmpToken = getTmpTokenRes.getString('data.token', '')
-					const expiresAt = getTmpTokenRes.getNumber('data.expiresAt', 0)
-					bailianTokenInfo.token = tmpToken
-					bailianTokenInfo.expireTime = expiresAt
-					return tmpToken
-				} catch (e: any) {
-					// const error = JSON.parse<UniCloudError>(JSON.stringify(e)) as UniCloudError
-					// console.error('uni-ai-x-co 请求失败', error, error.message)
-					throw new Error('获取临时token失败')
-				}
-				
-
-				// 非 unicloud项目 请求自己的服务器的接口得到临时 token 例如
-				/*
-				const res = await uni.request({
-					url: 'https://your-server.com/get-token',
-					method: 'GET'
-				})
-				if (res.statusCode != 200) {
-					throw new Error('获取临时token失败')
-				}
-				const tmpToken = res.getString('data.token', '')
-				const expiresAt = res.getNumber('data.expiresAt', 0)
-				bailianTokenInfo.token = tmpToken
-				bailianTokenInfo.expireTime = expiresAt
-				return tmpToken
-				*/
-			}
-		}
-	]
-])
-
-const providerNameList: string[] = []
-llmModelMap.forEach((_, key: string) => {
-	providerNameList.push(key)
-})
-
-if (providerNameList.length < 1) {
-	throw new Error('至少需要配置一个大语言模型提供商')
+	} catch (error) {
+		console.error('加载应用列表出错:', error);
+	}
 }
-const defaultLLM: DefaultLLM = {
-	provider: providerNameList[0]!,
-	model: llmModelMap.get(providerNameList[0])?.models?.[0].name!
+
+// 登出方法，清理用户信息和应用列表数据
+function logout() {
+  try {
+    // 清空本地存储的用户信息
+    uni.removeStorageSync('userInfo');
+    
+    // 重置currentUser对象
+    currentUser._id = '';
+    currentUser.nickname = '';
+    currentUser.avatar_file = null;
+    
+    console.log('登出成功');
+  } catch (error) {
+    console.error('登出失败:', error);
+  }
 }
 
 export default llmModelMap
-export { llmModelMap, type LLMModel, providerNameList, defaultLLM }
+export { llmModelMap, type LLMModel, providerNameList, defaultLLM, loadAppsList, updateCurrentUserFromStorage, logout }

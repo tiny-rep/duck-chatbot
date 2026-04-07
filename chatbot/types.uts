@@ -36,6 +36,7 @@ export type Llm = {
 // 对话
 export type Chat = {
 	datas: ChatItem[],
+	state: string,
 	activeId: string
 }
 
