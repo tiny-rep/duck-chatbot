@@ -111,15 +111,13 @@ export async function post<T>(url: string, config: RequestConfig = {}): Promise<
  * @param endUserId 终端用户ID
  * @param currentPage 当前页数，默认1
  * @param pageSize 每页条数，默认20
- * @param accessToken 访问令牌
  * @returns 消息列表
  */
 export async function getConversationMessages(
   conversationId: string,
   endUserId: string,
   currentPage: number = 1,
-  pageSize: number = 20,
-  accessToken?: string
+  pageSize: number = 20
 ): Promise<ApiResponse<PaginationData<Message>>> {
   return get<PaginationData<Message>>(
     `/conversations/${conversationId}/messages/ex-link/${endUserId}`,
@@ -127,8 +125,7 @@ export async function getConversationMessages(
       params: {
         current_page: currentPage,
         page_size: pageSize
-      },
-      accessToken
+      }
     }
   );
 }

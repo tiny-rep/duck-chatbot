@@ -38,7 +38,7 @@ const aiagentOsTokenInfo: LLmTokenInfo = {token: '', expireTime: 0}
 // 初始化 aiagent-os 提供商配置
 const aiagentOsProvider: Provider = {
 	models: [], // 初始为空，后续会通过 getAppsList 动态填充
-	description: 'AI Agent OS - 智能代理操作系统',
+	description: '智能代理操作系统',
 	baseURL: "/openapi/chat",
 	async getToken(): Promise<string> {
 		// AI Agent OS 使用固定的 token
@@ -57,7 +57,7 @@ const llmModelMap = new Map<string, Provider>([
 ]);
 
 // 动态从 getAppsList 获取模型列表
-async function loadAppsList() {
+async function loadAppsList(callback?: (llm: DefaultLLM) => void) {
 	try {
 		const response = await getAppsList();
 		if (response.code === 'success' && response.data) {
@@ -89,10 +89,17 @@ async function loadAppsList() {
         const models = llmModelMap.get(providerNameList[0])?.models;
         if (models && models.length > 0) {
           defaultLLM.model = models[0].name!;
+          defaultLLM.ex_link_token = models[0].ex_link_token;
         }
       }
 
+			// 调用回调通知更新
+			if (callback) {
+				await callback(defaultLLM);
+			}
+			
 			console.log('成功加载应用列表:', aiagentOsProvider.models);
+			console.log('更新后的providerNameList:', providerNameList);
 		} else {
 			console.error('加载应用列表失败:', response.message);
 		}

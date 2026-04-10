@@ -2,6 +2,7 @@ import {MarkdownToken} from '@/uni_modules/uni-cmark'
 
 export type LLMModel = {
 	name: string,
+	ex_link_token: string,
 	thinking?: boolean,
 	webSearch?: boolean,
 	image?: boolean,
@@ -18,7 +19,8 @@ export type Provider = {
 
 export type DefaultLLM = {
 	provider: string,
-	model: string
+	model: string,
+	ex_link_token: string
 }
 
 export type LLmTokenInfo = {

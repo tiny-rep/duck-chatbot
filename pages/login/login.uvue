@@ -103,6 +103,7 @@
 import { ref, computed } from 'vue';
 import * as apiService from '@/api';
 import { updateCurrentUserFromStorage, loadAppsList } from '@/chatbot/config.uts';
+import { uniAi } from '@/chatbot/sdk';
 
 // 状态管理
 const activeTab = ref(0);
@@ -159,8 +160,11 @@ async function wechatLogin() {
       uni.setStorageSync('userInfo', response.data);
       // 更新用户信息
       updateCurrentUserFromStorage();
-      // 加载应用列表
-      await loadAppsList();
+      // 加载应用列表并更新LLM配置
+      await loadAppsList((newLLM) => {
+        // 更新uniAi.llm
+        uniAi.llm = newLLM;
+      });
       // 使用路由跳转函数跳转到首页
       uni.redirectTo({ url: '/pages/index/index' });
     } else {
@@ -194,14 +198,16 @@ async function login() {
     
     if (response.code === 'success') {
       console.log('密码登录成功', response.data);
-
       // 存储登录信息到本地存储
       uni.setStorageSync('userInfo', response.data);
-	  debugger
       // 更新用户信息
       updateCurrentUserFromStorage();
-      // 加载应用列表
-      await loadAppsList();
+      // 加载应用列表并更新LLM配置
+      await loadAppsList( async (newLLM) => {
+        // 更新uniAi.llm
+        uniAi.llm = newLLM;
+        uniAi.loadHistoryConversations()
+      });
       // 使用路由跳转函数跳转到首页
       uni.redirectTo({ url: '/pages/index/index' });
     } else {
