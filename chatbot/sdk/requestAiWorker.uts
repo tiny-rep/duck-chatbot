@@ -1,6 +1,6 @@
 import testMarkdownText from './testMarkdownText.uts';
-import { llmModelMap } from '@/chatbot/config.uts';
-import { Chunk, Provider, RequestAiCoMessage, MarkdownElItem, Llm, CustomProviderCallbacks } from '@/chatbot/types.uts';
+import { llmModelMap, currentUser } from '@/chatbot/config.uts';
+import { Chunk, Provider, RequestAiCoMessage, MarkdownElItem, Llm, CustomProviderCallbacks, ChatRequestOption } from '@/chatbot/types.uts';
 import {MarkdownToken} from '@/uni_modules/uni-cmark'
 import ParseMarkdown from '@/chatbot/sdk/parseMarkdown';
 import treeToListSdk from '@/chatbot/sdk/treeToList';
@@ -31,7 +31,9 @@ type BailianOptions = {
 	onError ?: BailianOptionsOnErrorFn,
 	onDone ?: BailianOptionsOnDoneFn,
 	onSuccess ?: BailianOptionsOnSuccessFn,
-	onTaskCreate ?: BailianOptionsOnTaskCreateFn
+	onTaskCreate ?: BailianOptionsOnTaskCreateFn,
+	// 扩展参数
+	end_user_id?: string
 }
 type CheckDiffEndFn = () => void
 type CheckDiffFn = (index : number, checkDiffEndFn : CheckDiffEndFn) => void
@@ -240,13 +242,16 @@ class RequestAiWorker {
 			return
 		}
 		
-		this.updateChatTitle(messages, llm)
+		// 注释掉，不做总结，暂时不更新title
+		// this.updateChatTitle(messages, llm)
+
 		this.userAbort = false
 		this.requestAlServer({
 			llm,
 			messages,
 			stream: true,
 			chat_id: chat_id,
+			end_user_id: currentUser._id,
 			onTaskCreate: (requestTask : RequestTask) => {
 				this.requestTask = requestTask
 			},
@@ -277,24 +282,31 @@ class RequestAiWorker {
 					data: 'stop'
 				})
 			},
-			onDone: () => {
-				if (this.currentChatState == 'stop'){
-					console.log('requestAlServer onDone 当前对话已停止，忽略消息')
-					return
-				}
-				// 设置状态为完成
-				this.currentChatState = 'completed'
-				this.emitOnMessage({
-					type: "setCurrentChatState",
-					data: 'completed'
-				})
-				// 多加个换行结尾方便解析，防止解析到最后一行时，没有换行符，导致解析失败
-				if (!this.msgBody.endsWith('\n')) {
-					this.msgBody += '\n'
-				}
-				this.parseMarkdown!.runTask(this.msgBody)
-				this.parseMarkdown!.msgReceiveDone = true
-			}
+			onDone: (data: UTSJSONObject) => {
+						if (this.currentChatState == 'stop'){
+							console.log('requestAlServer onDone 当前对话已停止，忽略消息')
+							return
+						}
+						// 检查是否有conversation_id需要更新
+						if (data && data.conversation_id) {
+							this.emitOnMessage({
+								type: "updateConversationId",
+								data: data.conversation_id
+							})
+						}
+						// 设置状态为完成
+						this.currentChatState = 'completed'
+						this.emitOnMessage({
+							type: "setCurrentChatState",
+							data: 'completed'
+						})
+						// 多加个换行结尾方便解析，防止解析到最后一行时，没有换行符，导致解析失败
+						if (!this.msgBody.endsWith('\n')) {
+							this.msgBody += '\n'
+						}
+						this.parseMarkdown!.runTask(this.msgBody)
+						this.parseMarkdown!.msgReceiveDone = true
+					}
 		}).finally(() => {
 			// console.log('requestAlServer finally')
 			this.requestTask = null
@@ -321,7 +333,15 @@ class RequestAiWorker {
 				onDone: options.onDone
 			}
 			const chat_id = options.chat_id ?? ''
-			const success = await adapter.request(options.messages, options.llm.model, chat_id, callbacks)
+			
+			// 构建 ChatRequestOption
+			const chatRequestOption: ChatRequestOption = {
+				ex_link_token: options.llm?.ex_link_token,
+				agentic_id: options.llm?.agentic_id,
+				end_user_id: options.end_user_id
+			};
+			
+			const success = await adapter.request(options.messages, options.llm.model, chat_id, callbacks, chatRequestOption)
 
 			if (!success) {
 				const errInfo: UTSJSONObject = {

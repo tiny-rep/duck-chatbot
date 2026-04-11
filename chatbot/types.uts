@@ -1,6 +1,7 @@
 import {MarkdownToken} from '@/uni_modules/uni-cmark'
 
 export type LLMModel = {
+	id: string,
 	name: string,
 	ex_link_token: string,
 	thinking?: boolean,
@@ -20,7 +21,8 @@ export type Provider = {
 export type DefaultLLM = {
 	provider: string,
 	model: string,
-	ex_link_token: string
+	ex_link_token: string,
+	agentic_id: string
 }
 
 export type LLmTokenInfo = {
@@ -33,6 +35,8 @@ export type Llm = {
 	provider: string
 	model: string
 	webSearch: boolean
+	ex_link_token?: string
+	agentic_id?: string
 }
 
 // 对话
@@ -173,6 +177,16 @@ export type CustomProviderCallbacks = {
 	onDone ?: (data : UTSJSONObject) => void
 }
 
+// 聊天请求选项
+export interface ChatRequestOption {
+	// 应用链接令牌
+	ex_link_token?: string;
+	// 智能体ID
+	agentic_id?: string;
+	// 终端用户ID
+	end_user_id?: string;
+}
+
 // 自定义提供商适配器基类
 // 继承此类并通过 registerCustomProvider 注册，即可接入自定义 AI 提供商
 export class CustomProviderAdapter {
@@ -180,7 +194,7 @@ export class CustomProviderAdapter {
 	// 初始化（可选，模块加载时调用）
 	init() : void {}
 	// 发起请求（子类必须重写）
-	async request(messages : RequestAiCoMessage[], model : string, chat_id : string, callbacks : CustomProviderCallbacks) : Promise<boolean> {
+	async request(messages : RequestAiCoMessage[], model : string, chat_id : string, callbacks : CustomProviderCallbacks, options?: ChatRequestOption) : Promise<boolean> {
 		return false
 	}
 	// 是否支持会话标题更新（不支持则跳过）

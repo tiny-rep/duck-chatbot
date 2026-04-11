@@ -42,7 +42,8 @@ const aiagentOsProvider: Provider = {
 	baseURL: "/openapi/chat",
 	async getToken(): Promise<string> {
 		// AI Agent OS 使用固定的 token
-		return 'bearer llmops-v1/f4OAwyi5KynFsVQVCCldu5T9-c14hreAZH9eBhdtbyTSCoIsAZ3-HSGQhXLnCqHV';
+    const userInfo = uni.getStorageSync('userInfo');
+		return userInfo.access_token;
 	}
 };
 
@@ -90,6 +91,7 @@ async function loadAppsList(callback?: (llm: DefaultLLM) => void) {
         if (models && models.length > 0) {
           defaultLLM.model = models[0].name!;
           defaultLLM.ex_link_token = models[0].ex_link_token;
+          defaultLLM.agentic_id = models[0].id;
         }
       }
 
