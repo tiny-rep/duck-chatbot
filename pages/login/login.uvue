@@ -100,9 +100,8 @@
 </template>
 
 <script setup lang="uts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import * as apiService from '@/api';
-import { updateCurrentUserFromStorage, loadAppsList } from '@/chatbot/config.uts';
 import { uniAi } from '@/chatbot/sdk';
 
 // 状态管理
@@ -158,13 +157,6 @@ async function wechatLogin() {
       console.log('微信登录成功', response.data);
       // 存储登录信息到本地存储
       uni.setStorageSync('userInfo', response.data);
-      // 更新用户信息
-      updateCurrentUserFromStorage();
-      // 加载应用列表并更新LLM配置
-      await loadAppsList((newLLM) => {
-        // 更新uniAi.llm
-        uniAi.llm = newLLM;
-      });
       // 使用路由跳转函数跳转到首页
       uni.redirectTo({ url: '/pages/index/index' });
     } else {
@@ -200,16 +192,8 @@ async function login() {
       console.log('密码登录成功', response.data);
       // 存储登录信息到本地存储
       uni.setStorageSync('userInfo', response.data);
-      // 更新用户信息
-      updateCurrentUserFromStorage();
-      // 加载应用列表并更新LLM配置
-      await loadAppsList( async (newLLM) => {
-        // 更新uniAi.llm
-        uniAi.llm = newLLM;
-        uniAi.loadHistoryConversations()
-      });
       // 使用路由跳转函数跳转到首页
-      uni.redirectTo({ url: '/pages/index/index' });
+      uni.redirectTo({ url: '/chatbot/index/index' });
     } else {
       console.error('密码登录失败', response.message);
       uni.showToast({ title: '登录失败', icon: 'none' });
@@ -219,6 +203,7 @@ async function login() {
     uni.showToast({ title: '登录异常', icon: 'none' });
   }
 }
+
 </script>
 
 <style scoped>

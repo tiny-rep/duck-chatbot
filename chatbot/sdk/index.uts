@@ -10,8 +10,11 @@ import { getConversationMessages, getAppConversations, deleteConversation, updat
 import testMarkdownText from './testMarkdownText.uts';
 import { registerCustomProvider } from '@/chatbot/sdk/provider-registry.uts';
 import { AiAgentOsAdapter } from './aiagent-os-adapter.uts';
+import ParseMarkdown from '@/chatbot/sdk/parseMarkdown';
 export {testMarkdownText}
 export { isCustomProvider, providerSupportsTitleUpdate } from '@/chatbot/sdk/provider-registry.uts';
+
+
 let requestAiWorker: RequestAiWorker | null = null
 type BeforeRequestAiFn = () => void
 type MessageHandlerMapFn = () => void
@@ -150,6 +153,7 @@ class UniAi {
 	}
 	
 	constructor() {
+
 		// 注册 AI Agent OS 适配器
 		this.registerAiAgentOsAdapter();
 		
@@ -499,7 +503,9 @@ class UniAi {
 			
 			if (response.code === 'success' && response.data) {
 				// 清空现有消息
-				chatItem.msgList = [];
+				if (chatItem.msgList.length > 0) {
+					chatItem.msgList.splice(0, chatItem.msgList.length);
+				}
 				
 				// 添加历史消息
 				response.data.list.forEach((message: any) => {
@@ -507,7 +513,7 @@ class UniAi {
 					const userMsg: MsgItem = {
 						_id: message.id + '_user',
 						body: message.query,
-						from_uid: this.currentUser._id ?? 'tmp_user_',
+						from_uid: this.currentUser._id,
 						chat_id: conversationId,
 						create_time: message.created_at,
 						state: 0,
@@ -528,17 +534,29 @@ class UniAi {
 						rendered: true,
 						about_msg_id: userMsg._id
 					};
+					 // 解析 Markdown 内容
+        	if (message.answer) {
+						// 使用闭包捕获当前消息的引用
+						(function(currentMsg) {
+							// 创建临时的 ParseMarkdown 实例
+							const tempParser = new ParseMarkdown((markdownTokenList, isParseDone) => {
+								if (isParseDone) {
+									// 解析完成后更新当前消息的 markdownElList
+									currentMsg.markdownElList = markdownTokenList;
+
+									nextTick();
+								}
+							});
+							
+							// 标记消息接收完成
+							tempParser.msgReceiveDone = true;
+							
+							// 执行解析
+							tempParser.runTask(message.answer);
+						})(aiMsg);
+        	}
 					chatItem.msgList.push(aiMsg);
 				});
-				
-				// 更新会话标题（如果有消息）
-				if (chatItem.msgList.length > 0) {
-					const firstUserMsg = chatItem.msgList.find(msg => msg.from_uid !== 'uni-ai');
-					if (firstUserMsg) {
-						const title = firstUserMsg.body.substring(0, 20).replace(/\n/g, '');
-						chatItem.title = title;
-					}
-				}
 			} else {
 				console.error('加载历史消息失败: 接口返回错误', response.message);
 			}

@@ -12,9 +12,12 @@
 					<text class="msg-root-think-content-text">{{msg.thinkContent}}</text>
 				</view>
 			</view>
-			<template v-for="(item, index) in msg.markdownElList" :key="index">
+			<template v-for="(item, index) in markdownElList" :key="index">
 				<view v-if="item.type == 'block_quote'" class="msg-root-block-quote-box">
 					<uni-ai-text-md v-for="(blockQuote, i) in item.datasList" :key="i" :datas="blockQuote" :itemType="item.type"/>
+				</view>
+				<view v-if="item.type == 'paragraph'" class="msg-root-block-paragraph-box">
+					<uni-ai-text-md :key="item.uniqueId" :datas="item.tokens" :itemType="item.type"/>
 				</view>
 				<template v-else v-for="(datas, i) in item.datasList" :key="i">
 					<template v-for="(data, k) in datas" :key="k" v-if="['table', 'code_block', 'math', 'thematic_break', 'block_quote'].includes(item.type)">
@@ -54,6 +57,11 @@
 	const props = defineProps<UniAiXMsgProps>()
 	
 	const msg = ref<MsgItem>(props.msg as MsgItem)
+
+	// 计算属性，确保获取最新的 markdownElList
+  const markdownElList = computed(() => {
+    return msg.value.markdownElList || []
+  })
 	
 	const emit = defineEmits<{
 		'changeThinkContent': [hideThinkContent: boolean]
@@ -187,9 +195,13 @@
 .msg-root-code-box,
 .msg-root-hr-box,
 .msg-root-think-content,
+.msg-root-block-paragraph-box,
 .msg-root-block-quote-box {
 	width: 100%;
 	margin: 5px 0;
+	word-wrap: break-word;
+  word-break: break-all;
+  white-space: normal;
 }
 
 .msg-root-hr-box {

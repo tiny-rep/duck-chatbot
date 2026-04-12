@@ -21,6 +21,7 @@
 	import {uiTheme} from '@/chatbot/sdk'
 	import utils from '@/chatbot/sdk/utils.uts'
 	import testMarkdownText from '@/chatbot/sdk/testMarkdownText.uts';
+	import { updateCurrentUserFromStorage, loadAppsList } from '@/chatbot/config.uts';
 
 	import { md2json, initCmark, MarkdownToken} from '@/uni_modules/uni-cmark'
 	let markdownText = `| 姓名 | 年龄 | 职业 |
@@ -31,7 +32,7 @@
 		try {
 			// // 先初始化 WebAssembly 模块
 			await initCmark()
-			// console.log('WebAssembly 模块初始化完成')
+			console.log('WebAssembly 模块初始化完成')
 			// const start = Date.now()
 			// // 然后调用同步的 md2json
 			const json = md2json(markdownText)
@@ -136,7 +137,21 @@
 	}
 	// #endif
 	
-	onMounted(() => {
+	onMounted(async () => {
+		
+		// 更新用户信息
+		updateCurrentUserFromStorage();
+		if(uniAi.currentUser._id) {
+			// 加载应用列表并更新LLM配置
+			await loadAppsList( async (newLLM) => {
+				// 更新uniAi.llm
+				uniAi.llm = newLLM;
+				uniAi.loadHistoryConversations()
+			});
+		} else {
+			uni.redirectTo({ url: '/pages/login/login' })
+		}
+
 		// #ifdef WEB
 		window.addEventListener('resize', () => {
 			setMenu(window.innerWidth > 960)
