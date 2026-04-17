@@ -3,20 +3,29 @@
 		<image class="msg-root-avatar" src="@/chatbot/static/uni-chat-logo.png"/>
 		<text v-if="msg.error_msg != null" class="msg-root-error-msg">{{msg.error_msg}}</text>
 		<template v-else>
-			<view class="msg-root-think-content" v-if="msg.thinkContent != null && msg.thinkContent!.length > 0">
-				<view class="msg-root-think-content-header" @click="changeThinkContent">
-					<text class="msg-root-think-content-title">深度思考 &nbsp;</text>
-					<uni-icons :type="hideThinkContent ? 'down' : 'up'" size="14" color="#888"></uni-icons>
-				</view>
-				<view class="msg-root-think-content-text-box" :class="hideThinkContent ? 'msg-root-think-content-text-box-hide' : ''">
-					<text class="msg-root-think-content-text">{{msg.thinkContent}}</text>
-				</view>
+			<view @click="toggleThoughtsVisibility" class="toggle-thoughts-btn" v-if="msg.thoughts && msg.thoughts.length > 0">
+				{{ showThoughts ? '隐藏运行流程' : '显示运行流程' }}
+			</view>
+			<view class="msg-root-thoughts-container" v-if="msg.thoughts && msg.thoughts.length > 0">
+				<uni-collapse v-if="showThoughts" accordion="false" :collapse="true">
+					<uni-collapse-item 
+						v-for="(thought, index) in msg.thoughts" 
+						:key="thought.id"
+						:title="getEventTypeText(thought.event_type)"
+						:disabled="false"
+						:open="false"
+					>
+						<view class="msg-root-thought-content">
+							<text class="msg-root-thought-text">{{ getThoughtContent(thought) }}</text>
+						</view>
+					</uni-collapse-item>
+				</uni-collapse>
 			</view>
 			<template v-for="(item, index) in markdownElList" :key="index">
 				<view v-if="item.type == 'block_quote'" class="msg-root-block-quote-box">
 					<uni-ai-text-md v-for="(blockQuote, i) in item.datasList" :key="i" :datas="blockQuote" :itemType="item.type"/>
 				</view>
-				<view v-if="item.type == 'paragraph'" class="msg-root-block-paragraph-box">
+				<view v-if="item.type == 'paragraph' && !item.datasList" class="msg-root-block-paragraph-box">
 					<uni-ai-text-md :key="item.uniqueId" :datas="item.tokens" :itemType="item.type"/>
 				</view>
 				<template v-else v-for="(datas, i) in item.datasList" :key="i">
@@ -28,8 +37,8 @@
 					</template>
 					<uni-ai-text-md v-else :datas="datas" :itemType="item.type" :key="item.uniqueId"/>
 				</template>
-		   </template>
-		   <template v-if="isLastAiMsg && msg.body == ''">
+			</template>
+			<template v-if="isLastAiMsg && msg.body == ''">
 				<text v-if="state == 'stop'" class="msg-root-stop-text">回答被终止</text>
 				<text v-if="state == 'none'" class="msg-root-need-try">错误：未回复</text>
 				<uni-rotate-icon v-if="state == 'processing'" class="msg-root-loging-icon" />
@@ -49,6 +58,8 @@
 	import uniAiMsgCode from '@/chatbot/components/uni-ai-msg-code/uni-ai-msg-code.uvue'
 	import uniAiMsgTable from '@/chatbot/components/uni-ai-msg-table/uni-ai-msg-table.uvue'
 	import katexEl from '@/chatbot/components/katex-el/katex-el.uvue'
+	import uniCollapse from '@/uni_modules/uni-collapse/components/uni-collapse/uni-collapse.vue'
+	import uniCollapseItem from '@/uni_modules/uni-collapse/components/uni-collapse-item/uni-collapse-item.vue'
 	
 	type UniAiXMsgProps = {
 		msg: MsgItem
@@ -100,9 +111,57 @@
 		}
 	})
 	
+	const showThoughts = ref<boolean>(false) // 控制thoughts显示/隐藏，默认隐藏
+	
 	const changeThinkContent = () => {
 		hideThinkContent.value = !hideThinkContent.value
 		emit('changeThinkContent', hideThinkContent.value)
+	}
+	
+	// 切换thoughts可见性
+	const toggleThoughtsVisibility = () => {
+		showThoughts.value = !showThoughts.value
+	}
+	
+	// 事件类型中文映射
+	const eventTypeMap = {
+		'long_term_memory_recall': '长期记忆召回',
+		'agent_thought': '智能体观察',
+		'agent_message': '智能体消息',
+		'agent_action': '智能体动作',
+		'dataset_retrieval': '知识库检索',
+		'agent_end': '智能体结束',
+		'stop': '智能体停止',
+		'error': '智能体错误',
+		'timeout': '智能体超时',
+		'ping': '连接测试',
+		'agent_think': '智能体思考',
+		'workflow_node_message': '工作流节点执行消息'
+	}
+	
+	// 获取事件类型中文名称
+	const getEventTypeText = (eventType: string) => {
+		return eventTypeMap[eventType as keyof typeof eventTypeMap] || eventType
+	}
+	
+	// 获取思考内容
+	const getThoughtContent = (thought: any) => {
+		if (thought.event_type === 'workflow_node_message') {
+			return getWfNodeMsg(thought)
+		} else if (thought.event_type === 'agent_thought' || thought.event_type === 'agent_message') {
+			return thought.thought || '-'
+		} else {
+			return thought.observation || '-'
+		}
+	}
+	
+	// 工作流节点消息处理函数
+	const getWfNodeMsg = (msg: any) => {
+		const msgobj = JSON.parse(msg.observation)
+		// @ts-ignore
+		const node_title = msgobj.value.node_results[0].node_data.title
+		const wf_cn_name = msgobj.wf_cn_name
+		return `${wf_cn_name}-${node_title}`
 	}
 </script>
 
@@ -153,6 +212,34 @@
 .msg-root-think-content-text-box-hide {
 	margin-top: 0;
 	height: 0;
+}
+
+.msg-root-thoughts-container {
+	margin-top: 36px;
+	width: 100%;
+}
+
+.toggle-thoughts-btn {
+	position: absolute;
+	top: 0px;
+	left: 40px;
+	padding: 5px 10px;
+	border: 1px solid var(--border-secondary);
+	border-radius: 30px;
+	background-color: var(--bg-primary);
+}
+
+.msg-root-thought-content {
+	padding: 10px;
+	background-color: var(--bg-secondary);
+	border-radius: 4px;
+	margin-top: 5px;
+}
+
+.msg-root-thought-text {
+	color: var(--text-secondary);
+	font-size: 14px;
+	line-height: 1.5;
 }
 
 .msg-root-think-content-text {

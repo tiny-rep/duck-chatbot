@@ -1,6 +1,7 @@
 import testMarkdownText from './testMarkdownText.uts';
 import { llmModelMap, currentUser } from '@/chatbot/config.uts';
-import { Chunk, Provider, RequestAiCoMessage, MarkdownElItem, Llm, CustomProviderCallbacks, ChatRequestOption } from '@/chatbot/types.uts';
+import { Chunk, Provider, RequestAiCoMessage, MarkdownElItem, Llm,
+CustomProviderCallbacks, ChatRequestOption, EventType } from '@/chatbot/types.uts';
 import {MarkdownToken} from '@/uni_modules/uni-cmark'
 import ParseMarkdown from '@/chatbot/sdk/parseMarkdown';
 import treeToListSdk from '@/chatbot/sdk/treeToList';
@@ -13,7 +14,15 @@ export type OnMessageOptions = {
 	action?: 'set' | 'update' | 'remove' | 'add',
 	index?: number,
 	size?: number,
-	markdownElList?: MarkdownElItem[]
+	markdownElList?: MarkdownElItem[],
+	thought_id?: string,
+	thought_position?: number,
+	thought_body?: string,
+	thought_observation?: string,
+	thought_tool?: string,
+	thought_tool_input?: string,
+	thought_latency?: number
+	eventType?: EventType // 事件类型
 }
 
 type BeforeUpdateMdElList = (markdownTokenList : MarkdownToken[], isParseDone: boolean) => void;
@@ -52,6 +61,7 @@ class RequestAiWorker {
 	requestTask : RequestTask | null = null
 	msgBody : string = ''
 	thinkContent : string = ''
+	ai_msg: OnMessageOptions | null = null
 	parseMarkdown : ParseMarkdown | null = null
 	// 解析后的 markdown 元素列表
 	markdownElList : MarkdownElItem[] = []
@@ -160,37 +170,97 @@ class RequestAiWorker {
 	onChunkFn(chunkObj : Chunk) {
 		let reasoningContent: null | string = null
 		// console.log('onChunk', chunkObj)
-		let content = chunkObj.choices?.[0]?.delta?.content
-		// 特殊模型，例如豆包，深度思考内容在 content 的<think>标签中，需要单独处理
-		if (this.msgBody == '' && content == "<think>") {
-			this.hasThinkContent = true
-			content = ''
-		}
-		if (this.hasThinkContent){
-			if (content != '</think>') {
-				reasoningContent = content
-			} else {
-				this.hasThinkContent = false
-			}
-			content = ''
-		}
-		// end - 处理 think 标签
+		const chunk_msg = chunkObj.choices?.[0]
+		let content = chunk_msg?.delta?.content
+		// 获取事件类型
+		const eventType = chunkObj.choices?.[0]?.event
 		
-		reasoningContent = reasoningContent ?? chunkObj.choices?.[0]?.delta?.reasoning_content
-		if (content != null && content.length > 0) {
-			this.msgBody += content
-			this.emitOnMessage({
-				type: "setMsgBody",
-				data: this.msgBody
-			})
-		} else if (reasoningContent != null) {
-			this.thinkContent += reasoningContent
-			this.emitOnMessage({
-				type: "setThinkContent",
-				data: this.thinkContent.trim()
-			})
-		} else {
-			// console.error('content == null')
+		// 发送事件类型
+		if (eventType) {
+			// 检查事件类型是否在 EventType 枚举中
+			let validEventType: EventType | undefined = utils.strToEventType(eventType)
+			
+			// 初始化 ai_msg 对象
+			if (!this.ai_msg) {
+				this.ai_msg = {
+					thought_id: '',
+					thought_position: 0,
+					thought_body: '',
+					thought_observation: '',
+					thought_tool: '',
+					thought_tool_input: '',
+					thought_latency: 0,
+					eventType: validEventType
+				};
+			}
+			
+			if (eventType !== EventType.PING) {
+				// 除了agent_message数据为叠加，其他均为覆盖
+				if (eventType === EventType.AGENT_MESSAGE || eventType === EventType.AGENT_THINK) {
+					const event_id = chunk_msg?.id;
+					
+					// 数据不存在则添加
+					if (!this.ai_msg.thought_id || this.ai_msg.thought_id === '') {
+						this.ai_msg.thought_position += 1;
+						this.ai_msg.thought_id = event_id;
+						this.ai_msg.eventType = validEventType;
+						this.ai_msg.thought_body = chunk_msg?.thought || '';
+						this.ai_msg.thought_observation = chunk_msg?.observation || '';
+						this.ai_msg.thought_tool = chunk_msg?.tool || '';
+						this.ai_msg.thought_tool_input = chunk_msg?.tool_input || '';
+						this.ai_msg.thought_latency = chunk_msg?.latency || 0;
+					} else {
+						// 存在数据则叠加
+						this.ai_msg.thought_body = (this.ai_msg.thought_body || '') + (chunk_msg?.thought || '');
+						this.ai_msg.thought_observation = chunk_msg?.observation || '';
+						this.ai_msg.thought_latency = chunk_msg?.latency || 0;
+					}
+					
+					// 更新/添加answer答案
+					if (eventType === EventType.AGENT_MESSAGE) {
+						// 将内容添加到msgBody
+						const thoughtContent = chunk_msg?.thought || '';
+						this.msgBody += thoughtContent;
+						this.emitOnMessage({
+							type: "setMsgBody",
+							data: this.msgBody
+						});
+					}
+				} else if (eventType === EventType.ERROR) {
+					// 错误事件处理
+					const observation = chunk_msg?.observation || '';
+					this.msgBody = observation;
+					this.ai_msg.thought_observation = observation;
+					this.emitOnMessage({
+						type: "setMsgBody",
+						data: this.msgBody
+					});
+				} else if (eventType === EventType.TIMEOUT) {
+					// 超时事件处理
+					this.msgBody = '当前Agent执行已超时，无法得到答案，请重试';
+					this.ai_msg.thought_observation = '当前Agent执行已超时，无法得到答案，请重试';
+					this.emitOnMessage({
+						type: "setMsgBody",
+						data: this.msgBody
+					});
+				} else {
+					// 处理其他类型的事件，直接填充覆盖数据
+					this.ai_msg.thought_position += 1;
+					this.ai_msg.thought_id = chunk_msg?.id;
+					this.ai_msg.eventType = validEventType;
+					this.ai_msg.thought_body = chunk_msg?.thought || '';
+					this.ai_msg.thought_observation = chunk_msg?.observation || '';
+					this.ai_msg.thought_tool = chunk_msg?.tool || '';
+					this.ai_msg.thought_tool_input = chunk_msg?.tool_input || '';
+					this.ai_msg.thought_latency = chunk_msg?.latency || 0;
+				}
+				
+				// 更新ai_msg
+				this.emitOnMessage({
+					type: "setAiMsg",
+					data: this.ai_msg
+				});
+			}
 		}
 
 		if (content != null) {
@@ -203,6 +273,7 @@ class RequestAiWorker {
 		this.thinkContent = ''
 		this.markdownElList = []
 		this.currentChatState = ''
+		this.ai_msg = null
 
 		this.delayTaskTimer = 0
 		this.lockBeforeUpdateMdElList = false

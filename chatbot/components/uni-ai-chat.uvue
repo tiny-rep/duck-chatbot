@@ -491,6 +491,7 @@
 	padding: 15px 15px 5px 15px;
 	border-radius: 15px 15px 0 0;
 	border: 1px solid var(--border-secondary);
+	margin-bottom: 40px;
 }
 
 .chat-box-bottom-img-group {
@@ -616,8 +617,7 @@
 	}
 	.chat-box-bottom {
 		border-radius: 15px;
-		margin: 10px;
-		margin-top: 0;
+		margin: 10px 0px 40px;
 	}
 	.chat-box-tip {
 		display: block;

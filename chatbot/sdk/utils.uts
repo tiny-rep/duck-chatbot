@@ -1,4 +1,5 @@
 import { MarkdownToken } from '@/uni_modules/uni-cmark'
+import { EventType } from '@/chatbot/types.uts'
 class Utils {
 	async measureTextWidth(text: string, fontSize: number) : Promise<number> {
 		return new Promise((resolve) => {
@@ -28,6 +29,13 @@ class Utils {
 		// #ifndef APP-ANDROID
 		fn()
 		// #endif
+	}
+	// 把字符串转换成EventType
+	strToEventType(str: string) {
+		if (Object.values(EventType).includes(str)) {
+    	return str as unknown as EventType;
+		}
+		return null;
 	}
 }
 export default new Utils()

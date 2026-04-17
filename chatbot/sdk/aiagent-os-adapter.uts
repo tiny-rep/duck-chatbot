@@ -34,8 +34,15 @@ function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) =
                 choices: [{
                   delta: {
                     content: agentData.answer || '',
-                    reasoning_content: agentData.thought || ''
-                  }
+                  },
+                  id: agentData.id,
+                  position: 0,
+                  thought: agentData?.thought,
+                  observation: agentData?.observation,
+                  tool: agentData?.tool,
+                  tool_input: agentData?.tool_input,
+                  latency: agentData.latency,
+                  event: event // 添加 event 字段
                 }]
               };
               

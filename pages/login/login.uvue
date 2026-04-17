@@ -193,7 +193,7 @@ async function login() {
       // 存储登录信息到本地存储
       uni.setStorageSync('userInfo', response.data);
       // 使用路由跳转函数跳转到首页
-      uni.redirectTo({ url: '/chatbot/index/index' });
+      uni.navigateTo({ url: '/chatbot/index/index' });
     } else {
       console.error('密码登录失败', response.message);
       uni.showToast({ title: '登录失败', icon: 'none' });

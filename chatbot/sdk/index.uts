@@ -1,7 +1,7 @@
 import { reactive, watch, nextTick, computed } from 'vue';
 import { defaultLLM, currentUser, llmModelMap } from '../config';
 import { Llm,ChatItem,Chat, MsgItem, RequestAiCoMessage, Userinfo, BaseMsgItem,
-				Setting, MarkdownElItem, ImgItem, MultiModalContent, ImgParse, Provider } from '@/chatbot/types.uts';
+				Setting, MarkdownElItem, ImgItem, MultiModalContent, ImgParse, Provider, EventType } from '@/chatbot/types.uts';
 export { MsgItem, ChatItem, BaseMsgItem, Userinfo, MarkdownElItem }
 import {default as RequestAiWorker, RequestAiOptions, OnMessageOptions} from '@/chatbot/sdk/requestAiWorker.uts';
 import utils from '@/chatbot/sdk/utils.uts'
@@ -405,6 +405,38 @@ class UniAi {
 				['setErrorMsg', () => {
 					aiMsgItem.error_msg = data as string
 				}],
+				['setAiMsg', () => {
+					// 更新aiMsgItem的thoughts数组，根据thought_id查找或添加thought项
+					const aiMsgData = data as any;
+					if (aiMsgData && typeof aiMsgData === 'object') {
+						// 初始化thoughts数组（如果不存在）
+						if (!aiMsgItem.thoughts) {
+							aiMsgItem.thoughts = [];
+						}
+						
+						// 构建thought对象
+						const thoughtObj = {
+							id: aiMsgData.thought_id,
+							position: aiMsgData.thought_position,
+							event_type: aiMsgData.eventType,
+							thought: aiMsgData.thought_body,
+							observation: aiMsgData.thought_observation,
+							tool: aiMsgData.thought_tool,
+							tool_input: aiMsgData.thought_tool_input,
+							latency: aiMsgData.thought_latency
+						};
+						
+						const thoughtIdx = aiMsgItem.thoughts.findIndex((item) => item?.id === aiMsgData.thought_id);
+						
+						if (thoughtIdx === -1) {
+							// 数据不存在则添加
+							aiMsgItem.thoughts.push(thoughtObj);
+						} else {
+							// 数据存在则直接替换整个对象
+							aiMsgItem.thoughts[thoughtIdx] = thoughtObj;
+						}
+					}
+				}],
 				['setCurrentChatState', () => {
 					this.currentChat!.state = data as string
 					if (data == 'stop') {
@@ -508,7 +540,7 @@ class UniAi {
 				}
 				
 				// 添加历史消息
-				response.data.list.forEach((message: any) => {
+				[...response.data.list].reverse().forEach((message: any) => {
 					// 用户消息
 					const userMsg: MsgItem = {
 						_id: message.id + '_user',
@@ -534,7 +566,24 @@ class UniAi {
 						rendered: true,
 						about_msg_id: userMsg._id
 					};
-					 // 解析 Markdown 内容
+					// 实现对thoughts的解析
+					aiMsg.thoughts = [];
+					if (message.agent_thoughts && Array.isArray(message.agent_thoughts)) {
+						message.agent_thoughts.forEach((thought: any) => {
+							let validEventType: EventType | undefined = utils.strToEventType(thought.event)
+							aiMsg.thoughts.push({
+									id: thought.id,
+									event_type: validEventType,
+									thought: thought.thought,
+									observation: thought.observation,
+									tool: thought.tool,
+									tool_input: thought.tool_input,
+									latency: thought.latency
+							});
+						});
+					}
+
+					// 解析 Markdown 内容
         	if (message.answer) {
 						// 使用闭包捕获当前消息的引用
 						(function(currentMsg) {
