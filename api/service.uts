@@ -134,19 +134,29 @@ export async function getConversationMessages(
  * 删除特定的会话(终端用户)
  * @param conversationId 会话ID
  * @param endUserId 终端用户ID
- * @param accessToken 访问令牌
  * @returns 响应数据
  */
 export async function deleteConversation(
   conversationId: string,
-  endUserId: string,
-  accessToken?: string
+  endUserId: string
 ): Promise<ApiResponse<object>> {
   return post<object>(
-    `/conversations/${conversationId}/delete/ex-link/${endUserId}`,
-    {
-      accessToken
-    }
+    `/conversations/${conversationId}/delete/ex-link/${endUserId}`
+  );
+}
+
+/**
+ * 停止特定的会话(终端用户)
+ * @param ex_link_token 应用Key
+ * @param conversationId 会话ID
+ * @returns 响应数据
+ */
+export async function stopChatWithExLinkToken(
+  ex_link_token: string,
+  conversationId: string
+): Promise<ApiResponse<object>> {
+  return post<object>(
+    `/web-apps/${ex_link_token}/ex-link/chat/${conversationId}/stop`
   );
 }
 

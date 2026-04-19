@@ -25,9 +25,9 @@
 						</view>
 					</template>
 					<view class="chat-box-welcome-msg-box" v-if="msgList.length == 0">
-						<image class="chat-box-welcome-logo" src="@/chatbot/static/uni-chat-logo.png"/>
-						<text class="chat-box-welcome-title">嗨！我是 UNI-AI</text>
-						<text class="chat-box-welcome-text">我可以帮你回答问题、写代码、翻译、写诗等。</text>
+						<image class="chat-box-welcome-logo" src="@/chatbot/static/chat-logo.png"/>
+						<text class="chat-box-welcome-title">嗨！我是 {{modelTitle}}</text>
+						<text class="chat-box-welcome-text">{{modelDescription}}</text>
 					</view>
 					<view style="height: 35px;" id="last-msg"></view>
 				</scroll-view>
@@ -55,7 +55,7 @@
 						</view>
 					</view>
 				</scroll-view>
-				<textarea class="chat-box-chat-input" v-model="chatInputContent" placeholder="给 uni-ai-x 发送消息"
+				<textarea class="chat-box-chat-input" v-model="chatInputContent" placeholder="发送消息"
 					:adjust-position="false" @keyboardheightchange="onKeyboardheightchange" placeholder-class="chat-box-chat-input-placeholder"
 					@focus="scrollToLastMsg(true)" :auto-height="true" :disabled="isDemo"
 				></textarea>
@@ -139,7 +139,7 @@
 	
 	const chatTitle = computed<string>(() => {
 		if (isCustomProvider(uniAi.llm.provider)) {
-			return '与 ' + uniAi.llm.provider + ' 对话'
+			return '与 ' + uniAi.llm.model + ' 对话'
 		}
 		const title = uniAi.currentChat?.title ?? ''
 		if (title.length > 0) {
@@ -147,6 +147,29 @@
 		}
 		return '新对话'
 	})
+	const modelTitle = computed<string>(() => {
+		let title = '无名'
+		let provider = '通用支持'
+		if (isCustomProvider(uniAi.llm.provider)) {
+			title = uniAi.llm.model
+			provider = uniAi.llm.provider
+		}
+		if (title.length > 0) {
+			title = title.length > 10 ? title.slice(0, 10) + '...' : title
+		}
+		uni.setNavigationBarTitle({
+			title: provider
+		});
+		return title
+	})
+	const modelDescription = computed<string>(() => {
+		let desc = ''
+		if (isCustomProvider(uniAi.llm.provider)) {
+			desc = uniAi.llm.agentic_desc
+		}
+		return desc
+	})
+
 	function scrollToLastMsg(userClick: boolean){
 		autoToLastMsg = true
 		scrollIntoView.value = ""
@@ -250,7 +273,7 @@
 					if (isAiMsg) {
 						console.log('选择')
 						uni.navigateTo({
-							url: '/pages/select-text/select-text?msgId=' + item._id,
+							url: '/chatbot/select-text/select-text?msgId=' + item._id,
 							fail(err){
 								console.error('err', err)
 							}
@@ -453,6 +476,7 @@
 	width: 50px;
 	height: 50px;
 	margin-bottom: 20px;
+	border-radius: 10px;
 }
 
 .chat-box-welcome-title {
@@ -491,7 +515,7 @@
 	padding: 15px 15px 5px 15px;
 	border-radius: 15px 15px 0 0;
 	border: 1px solid var(--border-secondary);
-	margin-bottom: 40px;
+	margin-bottom: 45px;
 }
 
 .chat-box-bottom-img-group {

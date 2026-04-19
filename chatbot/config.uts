@@ -92,6 +92,7 @@ async function loadAppsList(callback?: (llm: DefaultLLM) => void) {
           defaultLLM.model = models[0].name!;
           defaultLLM.ex_link_token = models[0].ex_link_token;
           defaultLLM.agentic_id = models[0].id;
+          defaultLLM.agentic_desc = models[0].description;
         }
       }
 

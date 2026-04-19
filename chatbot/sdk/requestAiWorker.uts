@@ -144,6 +144,11 @@ class RequestAiWorker {
 					// #endif
 				})
 				if (isParseDone) {
+					this.currentChatState = 'stop'; // 设置内部状态为停止
+					this.emitOnMessage({
+							type: "setCurrentChatState",
+							data: 'stop'
+					});
 					this.emitOnMessage({type: "setRendered",data: true} as OnMessageOptions)
 				}
 			} else {
@@ -243,6 +248,9 @@ class RequestAiWorker {
 						type: "setMsgBody",
 						data: this.msgBody
 					});
+				} else if (eventType === EventType.AGENT_END) {
+					// 智能体结束事件处理
+					this.parseMarkdown.msgReceiveDone = true
 				} else {
 					// 处理其他类型的事件，直接填充覆盖数据
 					this.ai_msg.thought_position += 1;

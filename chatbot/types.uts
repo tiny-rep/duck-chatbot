@@ -8,7 +8,8 @@ export type LLMModel = {
 	webSearch?: boolean,
 	image?: boolean,
 	video?: boolean,
-	audio?: boolean
+	audio?: boolean,
+	description: string
 }
 
 export type Provider = {
@@ -22,7 +23,8 @@ export type DefaultLLM = {
 	provider: string,
 	model: string,
 	ex_link_token: string,
-	agentic_id: string
+	agentic_id: string,
+	agentic_desc?: string
 }
 
 export type LLmTokenInfo = {
@@ -36,7 +38,8 @@ export type Llm = {
 	model: string
 	webSearch: boolean
 	ex_link_token?: string
-	agentic_id?: string
+	agentic_id?: string,
+	description?: string,
 }
 
 // 对话

@@ -8,9 +8,8 @@
 					<switch class="uni-im-setting-switch" color="#111" :checked="isDarkMode" @change="onThemeChange" />
 				</view>
 				<view class="uni-im-setting-item">
-					<text class="uni-im-setting-label">大语言模型</text>
+					<text class="uni-im-setting-label">智能体</text>
 					<view class="uni-im-setting-value-box" @click="changeModel">
-						<image class="uni-im-setting-logo" :src="'/chatbot/static/ai-provider/'+uniAi.llm.provider+'.png'" mode="aspectFill"></image>
 						<text class="uni-im-setting-value">{{currentModel}}</text>
 						<uni-icons type="down" size="16" :color="uiTheme == 'light' ? '#999' : '#ccc'"></uni-icons>
 					</view>
@@ -19,17 +18,16 @@
 		</uni-popup>
 		<uni-popup ref="modelPopupRef" @clickMask="closeModelPopup">
 			<view class="uni-im-setting-choose-llm-model">
-				<text class="uni-im-setting-choose-title">选择AI模型</text>
+				<text class="uni-im-setting-choose-title">选择智能体</text>
 				<scroll-view direction="horizontal" class="uni-im-setting-scroll-view">
 					<view v-for="provider in providerNameList" :key="provider" class="uni-im-setting-provider-item">
 						<view class="uni-im-setting-info">
-							<image class="uni-im-setting-info-logo" :src="'/chatbot/static/ai-provider/'+provider+'.png'" mode="aspectFill"></image>
 							<view class="uni-im-setting-content">
 								<text class="uni-im-setting-name">{{provider}}</text>
 								<text class="uni-im-setting-description">{{llmModelMap.get(provider)!.description}}</text>
 							</view>
 						</view>
-						<view v-for="(llmMode, i) in llmModelMap.get(provider)!.models" :key="i" @click="radioChange(provider, llmMode.name, llmMode.ex_link_token, llmMode.id)" class="uni-im-setting-model-item">
+						<view v-for="(llmMode, i) in llmModelMap.get(provider)!.models" :key="i" @click="radioChange(provider, llmMode.name, llmMode.ex_link_token, llmMode.id, llmMode.description)" class="uni-im-setting-model-item">
 							<uni-icons class="uni-im-setting-radio" type="checkbox-filled" size="18" :color="currentModel == llmMode.name && provider == uniAi.llm.provider ? '#007AFF' : '#DDD'"></uni-icons>
 							<text class="uni-im-setting-model-text">{{llmMode.name}}</text>
 							<text class="uni-im-setting-tag" v-if="llmMode.thinking">思考</text>
@@ -93,11 +91,12 @@
 		openModelPopup()
 	}
 
-	const radioChange = async (provider: string, llmModel: string, ex_link_token: string, id: string) => {
+	const radioChange = async (provider: string, llmModel: string, ex_link_token: string, id: string, desc: string) => {
 		uniAi.llm.provider = provider
 		uniAi.llm.model = llmModel
 		uniAi.llm.ex_link_token = ex_link_token
 		uniAi.llm.agentic_id = id
+		uniAi.llm.agentic_desc = desc
 		await uniAi.refreshHistoryConversations()
 		nextTick(()=>{closeModelPopup()})
 	}

@@ -3,7 +3,7 @@
     <!-- 上部区域：Logo和应用名称 -->
     <view class="login-header">
       <image class="logo" src="@/static/logo.png" mode="aspectFit"></image>
-      <text class="app-name">Duck Chatbot</text>
+      <text class="app-name">智能体应用平台</text>
     </view>
     
     <!-- 中部区域：登录Tab页 -->
@@ -229,6 +229,7 @@ async function login() {
   width: 160rpx;
   height: 160rpx;
   margin-bottom: 20rpx;
+  border-radius: 20 px;
 }
 
 .app-name {

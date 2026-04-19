@@ -1,15 +1,15 @@
 <template>
 	<view class="msg-root" :class="[`ui-theme-${uiTheme}`]">
-		<image class="msg-root-avatar" src="@/chatbot/static/uni-chat-logo.png"/>
+		<image class="msg-root-avatar" src="@/chatbot/static/chat-logo.png"/>
 		<text v-if="msg.error_msg != null" class="msg-root-error-msg">{{msg.error_msg}}</text>
 		<template v-else>
-			<view @click="toggleThoughtsVisibility" class="toggle-thoughts-btn" v-if="msg.thoughts && msg.thoughts.length > 0">
+			<view @click="toggleThoughtsVisibility" class="toggle-thoughts-btn" v-if="filteredThoughts && filteredThoughts.length > 0">
 				{{ showThoughts ? '隐藏运行流程' : '显示运行流程' }}
 			</view>
-			<view class="msg-root-thoughts-container" v-if="msg.thoughts && msg.thoughts.length > 0">
+			<view class="msg-root-thoughts-container" v-if="filteredThoughts && filteredThoughts.length > 0">
 				<uni-collapse v-if="showThoughts" accordion="false" :collapse="true">
 					<uni-collapse-item 
-						v-for="(thought, index) in msg.thoughts" 
+						v-for="(thought, index) in filteredThoughts" 
 						:key="thought.id"
 						:title="getEventTypeText(thought.event_type)"
 						:disabled="false"
@@ -51,6 +51,7 @@
 <script lang="uts" setup>
 	import {uniAi, MsgItem, uiTheme} from '@/chatbot/sdk'
 	import { MarkdownToken} from '@/uni_modules/uni-cmark';
+	import { EventType } from '@/chatbot/types.uts'
 	import { MarkdownToken as IToken } from '@/uni_modules/uni-cmark'
 	import msgToolBar from '@/chatbot/components/msg-tool-bar.uvue'
 	import uniRotateIcon from '@/chatbot/components/uni-rotate-icon/uni-rotate-icon.uvue'
@@ -108,6 +109,25 @@
 	
 	watch(state, (state: string) => {
 		if (state == 'completed' || state == 'stop') {
+		}
+	})
+
+	// 过滤不需要显示的事件类型
+	const filteredThoughts = computed(() => {
+		if (msg.value.thoughts && msg.value.thoughts.length >= 0) {
+			return msg.value.thoughts.filter((thought: any) => {
+				return (
+						thought.event_type === EventType.LONG_TERM_MEMORY_RECALL ||
+						thought.event_type === EventType.AGENT_THOUGHT ||
+						thought.event_type === EventType.DATASET_RETRIEVAL ||
+						thought.event_type === EventType.AGENT_ACTION ||
+						thought.event_type === EventType.AGENT_MESSAGE ||
+						thought.event_type === EventType.AGENT_THINK ||
+						thought.event_type === EventType.WORKFLOW_NODE_MESSAGE
+					);
+			});
+		} else {
+			return []
 		}
 	})
 	
@@ -189,8 +209,7 @@
 	width: 25px;
 	height: 25px;
 	padding: 3px;
-	border-radius: 50px;
-	border: 1px solid var(--border-secondary);
+	border-radius: 10px;
 }
 
 .msg-root-think-content-header {

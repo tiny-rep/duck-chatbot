@@ -1,6 +1,6 @@
 <template>
 	<view class="menu-box" :class="[`ui-theme-${uiTheme}`]">
-		<text class="menu-box-title">UNI-AI 助手</text>
+		<text class="menu-box-title">您的AI 助手</text>
 		<addChatBtn @click="closeMenu()" />
 		<text class="menu-box-nav">历史对话</text>
 		<scroll-view direction="horizontal" class="menu-box-chat-list">
@@ -176,6 +176,7 @@
 	justify-content: space-between;
 	align-items: center;
 	padding: 10px;
+	margin-bottom: 40px;
 }
 
 .menu-box-user-info {

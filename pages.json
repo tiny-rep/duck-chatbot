@@ -24,6 +24,12 @@
 					"style": {
 						"navigationBarTitleText": "对话页"
 					}
+				},
+				{
+					"path": "select-text/select-text",
+					"style": {
+						"navigationBarTitleText": "选择文本"
+					}
 				}
 			]
 		}

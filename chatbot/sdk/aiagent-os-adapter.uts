@@ -169,6 +169,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
                                     }]
                                 };
                                 callbacks.onChunk?.(chunk);
+                                debugger
                                 // 如果是新会话，获取后端返回的conversation_id
                                 if (chat_id && chat_id.startsWith('new_') && response.data.conversation_id) {
                                     // 通过onDone回调传递conversation_id

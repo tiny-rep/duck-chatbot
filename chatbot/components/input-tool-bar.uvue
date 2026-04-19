@@ -1,6 +1,5 @@
 <template>
     <view class="input-tool-bar" :class="[`ui-theme-${uiTheme}`]">
-				
         <uni-icons v-if="canParseImg" @click="uploadImage" class="input-tool-bar-upload-image-btn" type="plusempty" size="25" color="var(--text-secondary)"></uni-icons>
         <view v-if="aiState == 'processing'" class="input-tool-bar-stop input-tool-bar-stop-active" @click="stop">
             <uni-ai-icon code="e691" color="#FFF" size="14"></uni-ai-icon>
@@ -105,7 +104,7 @@ const canWebSearch = computed<boolean>(() => {
 
 const stop = async () => {
     uniAi.currentChat!.state = 'stop';
-    uniAi.abortRequest()
+    await uniAi.abortRequest()
     await nextTick()
 };
 
@@ -275,6 +274,7 @@ onMounted(() => {
 .input-tool-bar {
     flex-direction: row;
     align-items: center;
+    justify-content: right;
     padding: 5px 0;
 }
 

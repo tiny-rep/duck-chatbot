@@ -6,7 +6,7 @@ export { MsgItem, ChatItem, BaseMsgItem, Userinfo, MarkdownElItem }
 import {default as RequestAiWorker, RequestAiOptions, OnMessageOptions} from '@/chatbot/sdk/requestAiWorker.uts';
 import utils from '@/chatbot/sdk/utils.uts'
 import proxyWeb from '@/chatbot/sdk/proxy-web.uts'
-import { getConversationMessages, getAppConversations, deleteConversation, updateConversationName } from '@/api/service.uts';
+import { getConversationMessages, getAppConversations, deleteConversation, updateConversationName, stopChatWithExLinkToken } from '@/api/service.uts';
 import testMarkdownText from './testMarkdownText.uts';
 import { registerCustomProvider } from '@/chatbot/sdk/provider-registry.uts';
 import { AiAgentOsAdapter } from './aiagent-os-adapter.uts';
@@ -50,6 +50,8 @@ class UniAi {
 			ex_link_token: defaultLLM.ex_link_token,
 			// agent的编号
 			agentic_id: defaultLLM.agentic_id,
+			// 描述
+			agentic_desc: defaultLLM.agentic_desc,
 			// 是否开启联网搜索
 			webSearch: false
 		}
@@ -110,14 +112,16 @@ class UniAi {
 		}
 		// 选中新创建的会话
 		nextTick(() => {
-			this.chat.activeId = this.chat.datas[0].id
+			if(this.chat.datas) {
+				this.chat.activeId = this.chat.datas[this.chat.datas.length - 1].id
+			}
 		})
 	}
 	
 	async deleteChat(chatId: string): Promise<void> {
 		try {
 			// 调用接口删除会话
-			const response = await deleteConversation(chatId, this.currentUser._id ?? 'tmp_user_');
+			const response = await deleteConversation(chatId, this.currentUser._id);
 			if (response.code !== 'success') {
 				console.error('删除会话失败:', response.message);
 				throw new Error('删除会话失败');
@@ -159,7 +163,7 @@ class UniAi {
 		
 		// 监听会话切换，加载历史消息
 		watch(() => this.chat.activeId, async (newChatId) => {
-			if (newChatId) {
+			if (newChatId && !newChatId.startsWith('new_')) {
 				// 加载历史消息
 				await this.loadHistoryMessages(newChatId, this.currentUser._id);
 			}
@@ -274,11 +278,31 @@ class UniAi {
 		}
 	}
 	
-	abortRequest() {
+	async abortRequest() {
 		// 终止请求
 		requestAiWorker?.postMessage({
 			type: 'abortRequest'
 		} as UTSJSONObject)
+
+		// 停止特定的会话
+		const targetChatId = this.currentChat?.id;
+		if (targetChatId) {
+			try {
+				// 调用API停止会话
+				const response = await stopChatWithExLinkToken(
+					this.llm.ex_link_token,
+					targetChatId
+				);
+				
+				if (response.code === 'success') {
+					console.log('会话停止成功', targetChatId);
+				} else {
+					console.error('会话停止失败', response.message);
+				}
+			} catch (error) {
+				console.error('停止会话时发生错误', error);
+			}
+		}
 	}
 	
 	async sendMsg(inputContent: string = ''): Promise<void> {
