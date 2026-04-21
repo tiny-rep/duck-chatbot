@@ -11,6 +11,7 @@ import testMarkdownText from './testMarkdownText.uts';
 import { registerCustomProvider } from '@/chatbot/sdk/provider-registry.uts';
 import { AiAgentOsAdapter } from './aiagent-os-adapter.uts';
 import ParseMarkdown from '@/chatbot/sdk/parseMarkdown';
+import treeToListSdk from '@/chatbot/sdk/treeToList';
 export {testMarkdownText}
 export { isCustomProvider, providerSupportsTitleUpdate } from '@/chatbot/sdk/provider-registry.uts';
 
@@ -541,6 +542,15 @@ class UniAi {
 		})
 	}
 	
+	// 转换
+	token2el(token : MarkdownToken) : MarkdownElItem {
+		return {
+			uniqueId: token.uniqueId!,
+			type: token.type!,
+			datasList: treeToListSdk.markTreeToList(token)
+		}
+	}
+
 	// 加载历史消息
 	async loadHistoryMessages(conversationId: string, endUserId: string) {
 		try {
@@ -609,26 +619,42 @@ class UniAi {
 
 					// 解析 Markdown 内容
         	if (message.answer) {
+						chatItem.msgList.push(aiMsg);
 						// 使用闭包捕获当前消息的引用
-						(function(currentMsg) {
+						(function(currentMsg, that) {
 							// 创建临时的 ParseMarkdown 实例
 							const tempParser = new ParseMarkdown((markdownTokenList, isParseDone) => {
 								if (isParseDone) {
-									// 解析完成后更新当前消息的 markdownElList
-									currentMsg.markdownElList = markdownTokenList;
+									// 1. 生成最终的 markdownElList
+									const finalElList: MarkdownElItem[] = [];
+									markdownTokenList.forEach((token) => {
+											finalElList.push(that.token2el(token));
+									});
 
-									nextTick();
+									// 2. 在 chatItem.msgList 中找到对应的消息对象
+									const targetMsgIndex = chatItem.msgList.findIndex(m => m._id === currentMsg._id);
+									
+									if (targetMsgIndex !== -1) {
+											// 3. 直接修改找到的对象的属性
+											chatItem.msgList[targetMsgIndex].markdownElList = finalElList;
+											chatItem.msgList[targetMsgIndex].rendered = true;
+											
+											// 4. 【强制触发响应式更新】
+											nextTick();
+									}
 								}
 							});
 							
+							// 执行解析
+							tempParser.runTask(message.answer);
+
 							// 标记消息接收完成
 							tempParser.msgReceiveDone = true;
 							
-							// 执行解析
-							tempParser.runTask(message.answer);
-						})(aiMsg);
+						})(aiMsg, this);
+        	} else {
+        		chatItem.msgList.push(aiMsg);
         	}
-					chatItem.msgList.push(aiMsg);
 				});
 			} else {
 				console.error('加载历史消息失败: 接口返回错误', response.message);

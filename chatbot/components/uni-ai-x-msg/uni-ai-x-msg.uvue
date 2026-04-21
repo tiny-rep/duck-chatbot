@@ -11,7 +11,7 @@
 					<uni-collapse-item 
 						v-for="(thought, index) in filteredThoughts" 
 						:key="thought.id"
-						:title="getEventTypeText(thought.event_type)"
+						:title="getEventTypeText(thought.event_type, thought)"
 						:disabled="false"
 						:open="false"
 					>
@@ -25,7 +25,7 @@
 				<view v-if="item.type == 'block_quote'" class="msg-root-block-quote-box">
 					<uni-ai-text-md v-for="(blockQuote, i) in item.datasList" :key="i" :datas="blockQuote" :itemType="item.type"/>
 				</view>
-				<view v-if="item.type == 'paragraph' && !item.datasList" class="msg-root-block-paragraph-box">
+				<view v-if="!item.datasList && item.tokens" class="msg-root-block-paragraph-box">
 					<uni-ai-text-md :key="item.uniqueId" :datas="item.tokens" :itemType="item.type"/>
 				</view>
 				<template v-else v-for="(datas, i) in item.datasList" :key="i">
@@ -72,6 +72,7 @@
 
 	// 计算属性，确保获取最新的 markdownElList
   const markdownElList = computed(() => {
+		console.log('aaa')
     return msg.value.markdownElList || []
   })
 	
@@ -150,25 +151,25 @@
 		'agent_message': '智能体消息',
 		'agent_action': '智能体动作',
 		'dataset_retrieval': '知识库检索',
-		'agent_end': '智能体结束',
 		'stop': '智能体停止',
 		'error': '智能体错误',
 		'timeout': '智能体超时',
-		'ping': '连接测试',
 		'agent_think': '智能体思考',
-		'workflow_node_message': '工作流节点执行消息'
+		'workflow_node_message': '工作流-'
 	}
 	
 	// 获取事件类型中文名称
-	const getEventTypeText = (eventType: string) => {
-		return eventTypeMap[eventType as keyof typeof eventTypeMap] || eventType
+	const getEventTypeText = (eventType: string, thought) => {
+		let eventTypeStr = eventTypeMap[eventType as keyof typeof eventTypeMap] || eventType
+		if (eventType === 'workflow_node_message') {
+			eventTypeStr += getWfNodeMsg(thought)
+		}
+		return eventTypeStr
 	}
 	
 	// 获取思考内容
 	const getThoughtContent = (thought: any) => {
-		if (thought.event_type === 'workflow_node_message') {
-			return getWfNodeMsg(thought)
-		} else if (thought.event_type === 'agent_thought' || thought.event_type === 'agent_message') {
+		if (thought.event_type === 'agent_thought' || thought.event_type === 'agent_message' || thought.event_type === 'agent_think') {
 			return thought.thought || '-'
 		} else {
 			return thought.observation || '-'

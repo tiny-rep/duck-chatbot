@@ -42,7 +42,7 @@ const aiagentOsProvider: Provider = {
 	baseURL: "/openapi/chat",
 	async getToken(): Promise<string> {
 		// AI Agent OS 使用固定的 token
-    const userInfo = uni.getStorageSync('userInfo');
+		const userInfo = uni.getStorageSync('userInfo');
 		return userInfo.access_token;
 	}
 };

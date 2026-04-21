@@ -144,6 +144,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
                 method: 'POST',
                 dataType: 'text',
                 data: requestData,
+                timeout: 10000 * 60 * 10 // 请求超时时长
                 // @ts-ignore
                 enableChunked: true,
                 header: {

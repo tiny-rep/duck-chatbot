@@ -203,9 +203,9 @@ class RequestAiWorker {
 				// 除了agent_message数据为叠加，其他均为覆盖
 				if (eventType === EventType.AGENT_MESSAGE || eventType === EventType.AGENT_THINK) {
 					const event_id = chunk_msg?.id;
-					
+
 					// 数据不存在则添加
-					if (!this.ai_msg.thought_id || this.ai_msg.thought_id === '') {
+					if (!this.ai_msg.thought_id || this.ai_msg.thought_id === '' || this.ai_msg.thought_id != event_id) {
 						this.ai_msg.thought_position += 1;
 						this.ai_msg.thought_id = event_id;
 						this.ai_msg.eventType = validEventType;
