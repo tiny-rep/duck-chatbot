@@ -17,6 +17,7 @@
 <script lang="uts" setup>
 	import uniAiMenu from '@/chatbot/components/uni-ai-menu.uvue'
 	import uniAiChat from '@/chatbot/components/uni-ai-chat.uvue'
+	import { uniAi } from '@/chatbot/sdk';
 	import proxyWeb from '@/chatbot/sdk/proxy-web.uts'
 	import {uiTheme} from '@/chatbot/sdk'
 	import utils from '@/chatbot/sdk/utils.uts'
