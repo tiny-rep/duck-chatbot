@@ -38,6 +38,9 @@
 					<uni-ai-text-md v-else :datas="datas" :itemType="item.type" :key="item.uniqueId"/>
 				</template>
 			</template>
+			<template v-if="!msg.markdownElList.length && msg.body != ''" >
+				<uni-rotate-icon class="msg-root-loging-icon" />
+			</template>
 			<template v-if="isLastAiMsg && msg.body == ''">
 				<text v-if="state == 'stop'" class="msg-root-stop-text">回答被终止</text>
 				<text v-if="state == 'none'" class="msg-root-need-try">错误：未回复</text>
@@ -72,7 +75,6 @@
 
 	// 计算属性，确保获取最新的 markdownElList
   const markdownElList = computed(() => {
-		console.log('aaa')
     return msg.value.markdownElList || []
   })
 	
@@ -254,6 +256,8 @@
 	background-color: var(--bg-secondary);
 	border-radius: 4px;
 	margin-top: 5px;
+	max-height: 300px;
+	overflow-y: auto;
 }
 
 .msg-root-thought-text {

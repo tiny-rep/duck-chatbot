@@ -9,7 +9,7 @@ import utils from '@/chatbot/sdk/utils.uts'
 import { getCustomProvider } from '@/chatbot/sdk/provider-registry.uts'
 
 export type OnMessageOptions = {
-	type: string,
+	type?: string,
 	data?: string | boolean | number 
 	action?: 'set' | 'update' | 'remove' | 'add',
 	index?: number,
@@ -264,9 +264,10 @@ class RequestAiWorker {
 				}
 				
 				// 更新ai_msg
+				const aiMsgCopy = JSON.parse<OnMessageOptions>(JSON.stringify(this.ai_msg)) as OnMessageOptions;
 				this.emitOnMessage({
 					type: "setAiMsg",
-					data: this.ai_msg
+					data: aiMsgCopy
 				});
 			}
 		}
