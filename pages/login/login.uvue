@@ -172,11 +172,11 @@ async function wechatLogin() {
 // 账号密码登录
 async function login() {
   // 验证昵称和密码
-  if (!nickname.value) {
+  if (nickname.value.length <= 0) {
     uni.showToast({ title: '请输入昵称', icon: 'none' });
     return;
   }
-  if (!password.value) {
+  if (password.value.length <= 0) {
     uni.showToast({ title: '请输入密码', icon: 'none' });
     return;
   }

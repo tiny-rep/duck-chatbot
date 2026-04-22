@@ -3,10 +3,10 @@
 		<image class="msg-root-avatar" src="@/chatbot/static/chat-logo.png"/>
 		<text v-if="msg.error_msg != null" class="msg-root-error-msg">{{msg.error_msg}}</text>
 		<template v-else>
-			<view @click="toggleThoughtsVisibility" class="toggle-thoughts-btn" v-if="filteredThoughts && filteredThoughts.length > 0">
+			<view @click="toggleThoughtsVisibility" class="toggle-thoughts-btn" v-if="filteredThoughts != null && filteredThoughts.length > 0">
 				{{ showThoughts ? '隐藏运行流程' : '显示运行流程' }}
 			</view>
-			<view class="msg-root-thoughts-container" v-if="filteredThoughts && filteredThoughts.length > 0">
+			<view class="msg-root-thoughts-container" v-if="filteredThoughts != null  && filteredThoughts.length > 0">
 				<uni-collapse v-if="showThoughts" accordion="false" :collapse="true">
 					<uni-collapse-item 
 						v-for="(thought, index) in filteredThoughts" 
@@ -25,9 +25,6 @@
 				<view v-if="item.type == 'block_quote'" class="msg-root-block-quote-box">
 					<uni-ai-text-md v-for="(blockQuote, i) in item.datasList" :key="i" :datas="blockQuote" :itemType="item.type"/>
 				</view>
-				<view v-if="!item.datasList && item.tokens" class="msg-root-block-paragraph-box">
-					<uni-ai-text-md :key="item.uniqueId" :datas="item.tokens" :itemType="item.type"/>
-				</view>
 				<template v-else v-for="(datas, i) in item.datasList" :key="i">
 					<template v-for="(data, k) in datas" :key="k" v-if="['table', 'code_block', 'math', 'thematic_break', 'block_quote'].includes(item.type)">
 						<uni-ai-msg-table class="msg-root-table-box" v-if="item.type == 'table'" :table-node="data" />
@@ -38,7 +35,7 @@
 					<uni-ai-text-md v-else :datas="datas" :itemType="item.type" :key="item.uniqueId"/>
 				</template>
 			</template>
-			<template v-if="!msg.markdownElList.length && msg.body != ''" >
+			<template v-if="msg.markdownElList.length == 0 && msg.body != ''" >
 				<uni-rotate-icon class="msg-root-loging-icon" />
 			</template>
 			<template v-if="isLastAiMsg && msg.body == ''">
@@ -54,7 +51,7 @@
 <script lang="uts" setup>
 	import {uniAi, MsgItem, uiTheme} from '@/chatbot/sdk'
 	import { MarkdownToken} from '@/uni_modules/uni-cmark';
-	import { EventType } from '@/chatbot/types.uts'
+	import { ThoughtEventType, MarkdownElItem, ThoughtItem, ThoughtObservation, ThoughtNodeData, ThoughtNodeResult } from '@/chatbot/types.uts'
 	import { MarkdownToken as IToken } from '@/uni_modules/uni-cmark'
 	import msgToolBar from '@/chatbot/components/msg-tool-bar.uvue'
 	import uniRotateIcon from '@/chatbot/components/uni-rotate-icon/uni-rotate-icon.uvue'
@@ -74,13 +71,14 @@
 	const msg = ref<MsgItem>(props.msg as MsgItem)
 
 	// 计算属性，确保获取最新的 markdownElList
-  const markdownElList = computed(() => {
-    return msg.value.markdownElList || []
+  const markdownElList = computed<MarkdownElItem[]>(() => {
+    return msg.value.markdownElList ?? []
   })
 	
-	const emit = defineEmits<{
-		'changeThinkContent': [hideThinkContent: boolean]
-	}>()
+	interface Emits {
+	  changeThinkContent: [hideThinkContent: boolean]
+	}
+	const emit = defineEmits<Emits>()
 	
 	const runTime = ref<number>(0)
 	const parseLock = ref<boolean>(false)
@@ -117,18 +115,20 @@
 
 	// 过滤不需要显示的事件类型
 	const filteredThoughts = computed(() => {
-		if (msg.value.thoughts && msg.value.thoughts.length >= 0) {
-			return msg.value.thoughts.filter((thought: any) => {
-				return (
-						thought.event_type === EventType.LONG_TERM_MEMORY_RECALL ||
-						thought.event_type === EventType.AGENT_THOUGHT ||
-						thought.event_type === EventType.DATASET_RETRIEVAL ||
-						thought.event_type === EventType.AGENT_ACTION ||
-						thought.event_type === EventType.AGENT_MESSAGE ||
-						thought.event_type === EventType.AGENT_THINK ||
-						thought.event_type === EventType.WORKFLOW_NODE_MESSAGE
-					);
-			});
+		if (msg.value.thoughts != null && msg.value.thoughts.length >= 0) {
+			let new_thoughts: ThoughtItem[] = []
+			msg.value.thoughts.map(thought => {
+				if (thought.event_type === ThoughtEventType.LONG_TERM_MEMORY_RECALL ||
+						thought.event_type === ThoughtEventType.AGENT_THOUGHT ||
+						thought.event_type === ThoughtEventType.DATASET_RETRIEVAL ||
+						thought.event_type === ThoughtEventType.AGENT_ACTION ||
+						thought.event_type === ThoughtEventType.AGENT_MESSAGE ||
+						thought.event_type === ThoughtEventType.AGENT_THINK ||
+						thought.event_type === ThoughtEventType.WORKFLOW_NODE_MESSAGE) {
+							new_thoughts.push(thought);
+						}
+			})
+			return new_thoughts;
 		} else {
 			return []
 		}
@@ -146,46 +146,85 @@
 		showThoughts.value = !showThoughts.value
 	}
 	
-	// 事件类型中文映射
-	const eventTypeMap = {
-		'long_term_memory_recall': '长期记忆召回',
-		'agent_thought': '智能体观察',
-		'agent_message': '智能体消息',
-		'agent_action': '智能体动作',
-		'dataset_retrieval': '知识库检索',
-		'stop': '智能体停止',
-		'error': '智能体错误',
-		'timeout': '智能体超时',
-		'agent_think': '智能体思考',
-		'workflow_node_message': '工作流-'
+	// 工作流节点消息处理函数
+	const getWfNodeMsg = (msg: ThoughtItem) => {
+		const observation = msg.observation ?? ''
+		if (observation == '') return ''
+				
+		const msgobj = JSON.parse<UTSJSONObject>(observation)!
+		if (msgobj == null)  {
+			return ''
+		}
+		// @ts-ignore
+		const node_results = msgobj.getArray<UTSJSONObject>("node_results")
+		const node_title = node_results![0].getJSON("node_data")!.getString("title")
+		const wf_cn_name = msgobj.getString("wf_cn_name")
+		return `${wf_cn_name}-${node_title}`
+	}
+	
+	const getEventTypeTextPro = (eventType: ThoughtEventType) => {
+		let eventTypeStr = ''
+			
+		// 直接 switch 匹配，UTS 安卓 100% 不报错
+		switch (eventType) {
+			case ThoughtEventType.LONG_TERM_MEMORY_RECALL:
+				eventTypeStr = '长期记忆召回'
+				break
+			case ThoughtEventType.AGENT_THOUGHT:
+				eventTypeStr = '智能体观察'
+				break
+			case ThoughtEventType.AGENT_MESSAGE:
+				eventTypeStr = '智能体消息'
+				break
+			case ThoughtEventType.AGENT_ACTION:
+				eventTypeStr = '智能体动作'
+				break
+			case ThoughtEventType.DATASET_RETRIEVAL:
+				eventTypeStr = '知识库检索'
+				break
+			case ThoughtEventType.STOP:
+				eventTypeStr = '智能体停止'
+				break
+			case ThoughtEventType.ERROR:
+				eventTypeStr = '智能体错误'
+				break
+			case ThoughtEventType.TIMEOUT:
+				eventTypeStr = '智能体超时'
+				break
+			case ThoughtEventType.AGENT_THINK:
+				eventTypeStr = '智能体思考'
+				break
+			case ThoughtEventType.WORKFLOW_NODE_MESSAGE:
+				eventTypeStr = '工作流-'
+				break
+			default:
+				// 未知类型，返回原值
+				eventTypeStr = '未知'
+				break
+		}
+		return eventTypeStr
 	}
 	
 	// 获取事件类型中文名称
-	const getEventTypeText = (eventType: string, thought) => {
-		let eventTypeStr = eventTypeMap[eventType as keyof typeof eventTypeMap] || eventType
-		if (eventType === 'workflow_node_message') {
+	const getEventTypeText = (eventType: ThoughtEventType, thought: ThoughtItem) => {
+		let eventTypeStr = getEventTypeTextPro(eventType)
+		if (eventType === ThoughtEventType.WORKFLOW_NODE_MESSAGE) {
 			eventTypeStr += getWfNodeMsg(thought)
 		}
 		return eventTypeStr
 	}
 	
 	// 获取思考内容
-	const getThoughtContent = (thought: any) => {
-		if (thought.event_type === 'agent_thought' || thought.event_type === 'agent_message' || thought.event_type === 'agent_think') {
-			return thought.thought || '-'
+	const getThoughtContent = (thought: ThoughtItem) => {
+		if (thought.event_type === ThoughtEventType.AGENT_THOUGHT ||
+			thought.event_type === ThoughtEventType.AGENT_MESSAGE ||
+			thought.event_type === ThoughtEventType.AGENT_THINK) {
+			return thought.thought ?? '-'
 		} else {
-			return thought.observation || '-'
+			return thought.observation ?? '-'
 		}
 	}
 	
-	// 工作流节点消息处理函数
-	const getWfNodeMsg = (msg: any) => {
-		const msgobj = JSON.parse(msg.observation)
-		// @ts-ignore
-		const node_title = msgobj.value.node_results[0].node_data.title
-		const wf_cn_name = msgobj.wf_cn_name
-		return `${wf_cn_name}-${node_title}`
-	}
 </script>
 
 <style lang="scss">

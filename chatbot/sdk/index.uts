@@ -1,7 +1,7 @@
 import { reactive, watch, nextTick, computed } from 'vue';
 import { defaultLLM, currentUser, llmModelMap } from '../config';
 import { Llm,ChatItem,Chat, MsgItem, RequestAiCoMessage, Userinfo, BaseMsgItem,
-				Setting, MarkdownElItem, ImgItem, MultiModalContent, ImgParse, Provider, EventType } from '@/chatbot/types.uts';
+				Setting, MarkdownElItem, ImgItem, MultiModalContent, ImgParse, ThoughtEventType } from '@/chatbot/types.uts';
 export { MsgItem, ChatItem, BaseMsgItem, Userinfo, MarkdownElItem }
 import {default as RequestAiWorker, RequestAiOptions, OnMessageOptions} from '@/chatbot/sdk/requestAiWorker.uts';
 import utils from '@/chatbot/sdk/utils.uts'
@@ -604,7 +604,7 @@ class UniAi {
 					aiMsg.thoughts = [];
 					if (message.agent_thoughts && Array.isArray(message.agent_thoughts)) {
 						message.agent_thoughts.forEach((thought: any) => {
-							let validEventType: EventType | undefined = utils.strToEventType(thought.event)
+							let validEventType: ThoughtEventType | undefined = utils.strToEventType(thought.event)
 							aiMsg.thoughts.push({
 									id: thought.id,
 									event_type: validEventType,

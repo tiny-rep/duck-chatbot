@@ -6,34 +6,34 @@
 /**
  * API响应类型
  */
-export type ApiResponse<T> = {
-  code: string,
-  data: T,
-  message: string
+export interface ApiResponse<T> {
+  code?: string;
+  data?: T;
+  message?: string;
 }
 
 /**
  * 分页器类型
  */
-export type Paginator = {
-  current_page: number,
-  page_size: number,
-  total_page: number,
-  total_record: number
+export interface Paginator {
+  current_page: number;
+  page_size: number;
+  total_page: number;
+  total_record: number;
 }
 
 /**
  * 分页响应数据类型
  */
-export type PaginationData<T> = {
-  list: T[],
-  paginator: Paginator
+export interface PaginationData<T> {
+  list: T[];
+  paginator: Paginator;
 }
 
 /**
  * 步骤数据类型
  */
-export type Step = {
+export interface Step {
   id: string,
   message_id: string,
   position: number,
@@ -48,7 +48,7 @@ export type Step = {
 /**
  * 消息数据类型
  */
-export type Message = {
+export interface Message {
   id: string,
   conversation_id: string,
   query: string,
@@ -63,7 +63,7 @@ export type Message = {
 /**
  * 模型配置类型
  */
-export type ModelConfig = {
+export interface ModelConfig {
   provider: string,
   model: string
 }
@@ -71,7 +71,7 @@ export type ModelConfig = {
 /**
  * 应用数据类型
  */
-export type App = {
+export interface App {
   id: string,
   name: string,
   icon: string,
@@ -86,7 +86,7 @@ export type App = {
 /**
  * 会话数据类型
  */
-export type Conversation = {
+export interface Conversation {
   id: string,
   name: string,
   summary: string,
@@ -96,9 +96,9 @@ export type Conversation = {
 /**
  * 基础请求配置
  */
-export type RequestConfig = {
-  headers?: object,
-  params?: object,
-  data?: any,
+export type RequestConfig {
+  headers?: UTSJSONObject,
+  params?: UTSJSONObject,
+  data?: UTSJSONObject,
   accessToken?: string
 }

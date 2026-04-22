@@ -138,15 +138,19 @@
 	}
 	// #endif
 	
-	onMounted(async () => {
+	onMounted(() => {
 		
 		// 更新用户信息
 		updateCurrentUserFromStorage();
-		if(uniAi.currentUser._id) {
+		if(uniAi.currentUser._id != null) {
 			// 加载应用列表并更新LLM配置
-			await loadAppsList( async (newLLM) => {
+			loadAppsList( (newLLM) => {
 				// 更新uniAi.llm
-				uniAi.llm = newLLM;
+				uniAi.llm.provider = newLLM.provider ?? '';
+				uniAi.llm.model = newLLM.model ?? '';
+				uniAi.llm.ex_link_token = newLLM.ex_link_token ?? '';
+				uniAi.llm.agentic_id = newLLM.agentic_id ?? '';
+				uniAi.llm.agentic_desc = newLLM.agentic_desc ?? '';
 				uniAi.loadHistoryConversations()
 			});
 		} else {

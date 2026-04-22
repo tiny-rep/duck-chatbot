@@ -36,10 +36,11 @@ export type LLmTokenInfo = {
 export type Llm = {
 	provider: string
 	model: string
-	webSearch: boolean
+	webSearch?: boolean
 	ex_link_token?: string
 	agentic_id?: string,
 	description?: string,
+	agentic_desc?: string
 }
 
 // 对话
@@ -94,7 +95,7 @@ export type MarkdownElItem = {
 	datasList: MarkdownToken[][]
 }
 // 事件类型枚举
-export enum EventType {
+export enum ThoughtEventType {
 	LONG_TERM_MEMORY_RECALL = "long_term_memory_recall", // 长期记忆召回事件
 	AGENT_THOUGHT = "agent_thought", // 智能体观察事件
 	AGENT_MESSAGE = "agent_message", // 智能体消息事件
@@ -111,7 +112,7 @@ export enum EventType {
 
 // 推理过程消息
 export type ThoughtItem = {
-	event_type: EventType,
+	event_type: ThoughtEventType,
 	id: string,
 	position: number,
 	thought: string,
@@ -239,4 +240,18 @@ export class CustomProviderAdapter {
 	}
 	// 是否支持会话标题更新（不支持则跳过）
 	supportsTitleUpdate : boolean = false
+}
+
+// 推理过程相关类的定义
+export type ThoughtNodeData = {
+	title: string
+}
+
+export type ThoughtNodeResult = {
+	node_data: ThoughtNodeData
+}
+
+export type ThoughtObservation = {
+	wf_cn_name: string
+	node_results: ThoughtNodeResult[]
 }

@@ -1,7 +1,7 @@
 import testMarkdownText from './testMarkdownText.uts';
 import { llmModelMap, currentUser } from '@/chatbot/config.uts';
 import { Chunk, Provider, RequestAiCoMessage, MarkdownElItem, Llm,
-CustomProviderCallbacks, ChatRequestOption, EventType } from '@/chatbot/types.uts';
+CustomProviderCallbacks, ChatRequestOption, ThoughtEventType } from '@/chatbot/types.uts';
 import {MarkdownToken} from '@/uni_modules/uni-cmark'
 import ParseMarkdown from '@/chatbot/sdk/parseMarkdown';
 import treeToListSdk from '@/chatbot/sdk/treeToList';
@@ -209,22 +209,22 @@ class RequestAiWorker {
 						this.ai_msg.thought_position += 1;
 						this.ai_msg.thought_id = event_id;
 						this.ai_msg.eventType = validEventType;
-						this.ai_msg.thought_body = chunk_msg?.thought || '';
-						this.ai_msg.thought_observation = chunk_msg?.observation || '';
-						this.ai_msg.thought_tool = chunk_msg?.tool || '';
-						this.ai_msg.thought_tool_input = chunk_msg?.tool_input || '';
-						this.ai_msg.thought_latency = chunk_msg?.latency || 0;
+						this.ai_msg.thought_body = chunk_msg?.thought ?? '';
+						this.ai_msg.thought_observation = chunk_msg?.observation ?? '';
+						this.ai_msg.thought_tool = chunk_msg?.tool ?? '';
+						this.ai_msg.thought_tool_input = chunk_msg?.tool_input ?? '';
+						this.ai_msg.thought_latency = chunk_msg?.latency ?? 0;
 					} else {
 						// 存在数据则叠加
-						this.ai_msg.thought_body = (this.ai_msg.thought_body || '') + (chunk_msg?.thought || '');
-						this.ai_msg.thought_observation = chunk_msg?.observation || '';
-						this.ai_msg.thought_latency = chunk_msg?.latency || 0;
+						this.ai_msg.thought_body = (this.ai_msg.thought_body ?? '') + (chunk_msg?.thought ?? '');
+						this.ai_msg.thought_observation = chunk_msg?.observation ?? '';
+						this.ai_msg.thought_latency = chunk_msg?.latency ?? 0;
 					}
 					
 					// 更新/添加answer答案
 					if (eventType === EventType.AGENT_MESSAGE) {
 						// 将内容添加到msgBody
-						const thoughtContent = chunk_msg?.thought || '';
+						const thoughtContent = chunk_msg?.thought ?? '';
 						this.msgBody += thoughtContent;
 						this.emitOnMessage({
 							type: "setMsgBody",
@@ -233,7 +233,7 @@ class RequestAiWorker {
 					}
 				} else if (eventType === EventType.ERROR) {
 					// 错误事件处理
-					const observation = chunk_msg?.observation || '';
+					const observation = chunk_msg?.observation ?? '';
 					this.msgBody = observation;
 					this.ai_msg.thought_observation = observation;
 					this.emitOnMessage({
@@ -256,11 +256,11 @@ class RequestAiWorker {
 					this.ai_msg.thought_position += 1;
 					this.ai_msg.thought_id = chunk_msg?.id;
 					this.ai_msg.eventType = validEventType;
-					this.ai_msg.thought_body = chunk_msg?.thought || '';
-					this.ai_msg.thought_observation = chunk_msg?.observation || '';
-					this.ai_msg.thought_tool = chunk_msg?.tool || '';
-					this.ai_msg.thought_tool_input = chunk_msg?.tool_input || '';
-					this.ai_msg.thought_latency = chunk_msg?.latency || 0;
+					this.ai_msg.thought_body = chunk_msg?.thought ?? '';
+					this.ai_msg.thought_observation = chunk_msg?.observation ?? '';
+					this.ai_msg.thought_tool = chunk_msg?.tool ?? '';
+					this.ai_msg.thought_tool_input = chunk_msg?.tool_input ?? '';
+					this.ai_msg.thought_latency = chunk_msg?.latency ?? 0;
 				}
 				
 				// 更新ai_msg

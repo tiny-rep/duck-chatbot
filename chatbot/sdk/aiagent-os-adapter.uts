@@ -33,7 +33,7 @@ function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) =
               const chunk: Chunk = {
                 choices: [{
                   delta: {
-                    content: agentData.answer || '',
+                    content: agentData.answer ?? '',
                   },
                   id: agentData.id,
                   position: 0,
@@ -130,7 +130,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
 
             // 构建请求数据，根据 API 文档的要求
             const requestData = {
-                end_user_id: options?.end_user_id || 'e1baf52a-1be2-4b93-ad62-6fad72f1ec37', // 使用options中的end_user_id或默认值
+                end_user_id: options?.end_user_id, // 使用options中的end_user_id或默认值
                 app_id: options?.agentic_id, // 使用options中的agentic_id作为应用的id
                 conversation_id: chat_id && !chat_id.startsWith('new_') ? chat_id : undefined, // 如果是临时ID，不传递conversation_id
                 query: query,
@@ -140,7 +140,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
             // 使用 uni.request 发起请求，参考 requestAlServer 方法的实现
             this.requestTask = uni.request({
                 // API 文档中指定的接口地址
-                url: `/api/web-apps/${options?.ex_link_token || ''}/ex-link/chat`,
+                url: `/api/web-apps/${options?.ex_link_token ?? ''}/ex-link/chat`,
                 method: 'POST',
                 dataType: 'text',
                 data: requestData,
@@ -165,7 +165,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
                                 const chunk: Chunk = {
                                     choices: [{
                                         message: {
-                                            content: response.data.answer || ''
+                                            content: response.data.answer ?? ''
                                         }
                                     }]
                                 };
@@ -266,5 +266,5 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
     /**
      * 是否支持会话标题更新
      */
-    supportsTitleUpdate: boolean = true;
+    override supportsTitleUpdate: boolean = true;
 }

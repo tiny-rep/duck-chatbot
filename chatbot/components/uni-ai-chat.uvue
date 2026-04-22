@@ -165,7 +165,7 @@
 	const modelDescription = computed<string>(() => {
 		let desc = ''
 		if (isCustomProvider(uniAi.llm.provider)) {
-			desc = uniAi.llm.agentic_desc
+			desc = uniAi.llm.agentic_desc ?? ''
 		}
 		return desc
 	})
