@@ -124,6 +124,7 @@ class UniAi {
 	addChat(checkEmpty: boolean = true) {
 		// 检查是否已经存在空会话，如果存在则直接选中，否则创建新会话
 		const lastItem = this.chat.datas.length == 0 ? null : this.chat.datas[0] as ChatItem | null;
+
 		if (!checkEmpty || lastItem?.msgList.length != 0) {
 			const newChat: ChatItem = {
 				id: this.getNewChatTempId(), // 使用临时ID标记新会话
@@ -135,6 +136,7 @@ class UniAi {
 			};
 			this.chat.datas.push(newChat);
 		}
+		console.log(this.chat.datas)
 		// 选中新创建的会话
 		nextTick(() => {
 			if(this.chat.datas != null) {
@@ -147,9 +149,8 @@ class UniAi {
 		try {
 			// 调用接口删除会话
 			const response = await deleteConversation(chatId, this.currentUser!._id!);
-			if (response.code !== 'success') {
+			if (response.code != 'success') {
 				console.error('删除会话失败:', response.message);
-				throw new Error('删除会话失败');
 			}
 			
 			// 如果只有一个，删之前需要先创建一个并设置为选中，否则会照成无选中会话导致崩溃
@@ -166,8 +167,7 @@ class UniAi {
 				uniAi.chat.datas.splice(index, 1)
 			})
 		} catch (error) {
-			console.error('删除会话失败:', error);
-			throw error;
+			console.error('删除会话失败:', error.message);
 		}
 	}
 		
