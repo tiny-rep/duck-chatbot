@@ -30,12 +30,5 @@ class Utils {
 		fn()
 		// #endif
 	}
-	// 把字符串转换成EventType
-	strToEventType(str: string) {
-		if (Object.values(ThoughtEventType).includes(str)) {
-    	return str as unknown as ThoughtEventType;
-		}
-		return null;
-	}
 }
 export default new Utils()

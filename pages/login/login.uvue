@@ -8,65 +8,9 @@
     
     <!-- 中部区域：登录Tab页 -->
     <view class="login-content">
-      <!-- 微信小程序端显示Tab页 -->
-      <view v-if="isWechatMiniProgram" class="tab-container">
-        <view class="tab-header">
-          <view 
-            :class="['tab-item', { active: activeTab === 0 }]" 
-            @click="activeTab = 0"
-          >
-            微信快捷登录
-          </view>
-          <view 
-            :class="['tab-item', { active: activeTab === 1 }]" 
-            @click="activeTab = 1"
-          >
-            账号密码登录
-          </view>
-        </view>
-        
-        <!-- 微信快捷登录Tab -->
-        <view v-if="activeTab === 0" class="tab-content">
-          <button 
-            class="wechat-login-btn"
-            @click="wechatLogin"
-          >
-            <text class="wechat-icon">📱</text>
-            <text>微信快捷登录</text>
-          </button>
-        </view>
-        
-        <!-- 账号密码登录Tab -->
-        <view v-else class="tab-content">
-          <view class="login-form">
-            <view class="form-item">
-              <input 
-                v-model="nickname" 
-                type="text" 
-                placeholder="请输入昵称" 
-                class="input"
-              />
-            </view>
-            <view class="form-item">
-              <input 
-                v-model="password" 
-                type="password" 
-                placeholder="请输入密码" 
-                class="input"
-              />
-            </view>
-            <button 
-              class="login-btn"
-              @click="login"
-            >
-              登录
-            </button>
-          </view>
-        </view>
-      </view>
       
       <!-- H5端只显示登录区域 -->
-      <view v-else class="login-form">
+      <view class="login-form">
         <view class="form-item">
           <input 
             v-model="nickname" 
@@ -101,7 +45,7 @@
 
 <script setup lang="uts">
 import { ref, computed, onMounted, nextTick } from 'vue';
-import * as apiService from '@/api';
+import { loginPwd } from '@/api/service.uts';
 import { uniAi } from '@/chatbot/sdk';
 
 // 状态管理
@@ -109,65 +53,6 @@ const activeTab = ref(0);
 const nickname = ref('');
 const password = ref('');
 
-// 计算属性：判断是否为微信小程序端
-const isWechatMiniProgram = computed(() => {
-  return uni.getSystemInfoSync().platform === 'mp-weixin';
-});
-
-// 微信快捷登录
-async function wechatLogin() {
-  try {
-    // 第一步：调用微信登录接口获取code
-    const loginResult = await new Promise((resolve, reject) => {
-      wx.login({
-        success: resolve,
-        fail: reject
-      });
-    });
-    
-    const code = (loginResult as any).code;
-    if (!code) {
-      throw new Error('获取微信登录code失败');
-    }
-    
-    // 第二步：获取用户信息
-    const userProfileResult = await new Promise((resolve, reject) => {
-      wx.getUserProfile({
-        desc: '用于完善用户资料',
-        success: resolve,
-        fail: reject
-      });
-    });
-    
-    const userInfo = (userProfileResult as any).userInfo;
-    if (!userInfo) {
-      throw new Error('获取微信用户信息失败');
-    }
-    
-    // 第三步：调用autoLogin接口
-    // 注意：实际应用中，应该先将code发送到后端，后端通过code换取openid和unionId
-    // 这里为了演示，直接使用模拟的unionId
-    const response = await apiService.autoLogin(
-      userInfo.nickName,
-      'app_id', // 实际应用中需要替换为真实的appId
-      'wechat_' + Date.now() // 实际应用中应该使用后端返回的unionId
-    );
-    
-    if (response.code === 'success') {
-      console.log('微信登录成功', response.data);
-      // 存储登录信息到本地存储
-      uni.setStorageSync('userInfo', response.data);
-      // 使用路由跳转函数跳转到首页
-      uni.redirectTo({ url: '/pages/index/index' });
-    } else {
-      console.error('微信登录失败', response.message);
-      uni.showToast({ title: '登录失败', icon: 'none' });
-    }
-  } catch (error) {
-    console.error('微信登录异常', error);
-    uni.showToast({ title: '登录异常', icon: 'none' });
-  }
-}
 
 // 账号密码登录
 async function login() {
@@ -183,17 +68,16 @@ async function login() {
   
   try {
     // 调用loginPwd接口
-    const response = await apiService.loginPwd(
+    const response = await loginPwd(
       nickname.value,
       password.value
     );
-    
-    if (response.code === 'success') {
-      console.log('密码登录成功', response.data);
-      // 存储登录信息到本地存储
-      uni.setStorageSync('userInfo', response.data);
-      // 使用路由跳转函数跳转到首页
-      uni.navigateTo({ url: '/chatbot/index/index' });
+    if (response.code == 'success') {
+		const data = response.data
+	    // 存储登录信息到本地存储
+		uni.setStorageSync('userInfo', JSON.stringify(data));
+		// 使用路由跳转函数跳转到首页
+		uni.navigateTo({ url: '/chatbot/index/index' });
     } else {
       console.error('密码登录失败', response.message);
       uni.showToast({ title: '登录失败', icon: 'none' });
@@ -208,11 +92,11 @@ async function login() {
 
 <style scoped>
 .login-container {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(180deg, #FF9900 0%, #FFD700 50%, #FFE680 100%);
+  background: #FF9900;
   padding: 20rpx;
   position: relative;
   overflow: hidden;
@@ -220,7 +104,7 @@ async function login() {
 
 .login-header {
   position: absolute;
-  top: 2rem;
+  top: 100rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -230,7 +114,7 @@ async function login() {
   width: 160rpx;
   height: 160rpx;
   margin-bottom: 20rpx;
-  border-radius: 20 px;
+  border-radius: 20rpx;
 }
 
 .app-name {
@@ -248,66 +132,7 @@ async function login() {
   border-radius: 20rpx;
   padding: 40rpx;
   box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.15);
-  margin: 12rem 0 4rem;
-  backdrop-filter: blur(8rpx); /* 模糊背景，提升沉浸感 */
-}
-
-/* Tab样式 */
-.tab-container {
-  width: 100%;
-}
-
-.tab-header {
-  display: flex;
-  margin-bottom: 30rpx;
-  border-bottom: 1rpx solid #e5e5e5;
-}
-
-.tab-item {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx 0;
-  font-size: 28rpx;
-  color: #666666;
-  position: relative;
-}
-
-.tab-item.active {
-  color: #1e3c72;
-  font-weight: bold;
-}
-
-.tab-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1rpx;
-  left: 20%;
-  width: 60%;
-  height: 3rpx;
-  background-color: #1e3c72;
-}
-
-.tab-content {
-  padding-top: 20rpx;
-}
-
-/* 微信登录按钮 */
-.wechat-login-btn {
-  width: 100%;
-  height: 80rpx;
-  background-color: #07C160;
-  color: #ffffff;
-  border-radius: 40rpx;
-  font-size: 32rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 60rpx;
-}
-
-.wechat-icon {
-  font-size: 40rpx;
-  margin-right: 10rpx;
+  margin: 400rpx 0rpx 4rpx;
 }
 
 /* 登录表单样式 */
@@ -342,7 +167,7 @@ async function login() {
 
 .login-footer {
   position: absolute;
-  bottom: 6rem;
+  bottom: 40px;
 }
 
 .version {

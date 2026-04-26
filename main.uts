@@ -1,13 +1,9 @@
 import App from './App.uvue'
 
 import { createSSRApp } from 'vue'
-import * as apiService from './api'
 
 export function createApp() {
 	const app = createSSRApp(App)
-	
-	// 注册全局API服务
-	app.config.globalProperties.$api = apiService
 	
 	return {
 		app

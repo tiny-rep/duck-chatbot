@@ -101,9 +101,8 @@ function initUniCodeHighlighter(callBack: () => void){
 		// 	uniCodeHighlighter = res
 		// 	callBack()
 		// })
-		uniCodeHighlighter = new CreateHighLighter({ languages: tmls } as HighLighterOptions)
+		// uniCodeHighlighter = new CreateHighLighter({ languages: tmls } as HighLighterOptions)
 		callBack()
-		// console.log(tmls)
 	} else {
 		callBack()
 	}

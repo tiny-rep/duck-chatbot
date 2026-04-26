@@ -9,14 +9,16 @@ export type LLMModel = {
 	image?: boolean,
 	video?: boolean,
 	audio?: boolean,
-	description: string
+	description: string,
+	preset_prompt?: string,
+	icon?: string
 }
 
 export type Provider = {
 	models: LLMModel[],
 	description?: string,
 	baseURL?: string,
-	getToken?: () => Promise<string>,
+	getToken: () => Promise<string>,
 }
 
 export type DefaultLLM = {
@@ -95,24 +97,24 @@ export type MarkdownElItem = {
 	datasList: MarkdownToken[][]
 }
 // 事件类型枚举
-export enum ThoughtEventType {
-	LONG_TERM_MEMORY_RECALL = "long_term_memory_recall", // 长期记忆召回事件
-	AGENT_THOUGHT = "agent_thought", // 智能体观察事件
-	AGENT_MESSAGE = "agent_message", // 智能体消息事件
-	AGENT_ACTION = "agent_action", // 智能体动作
-	DATASET_RETRIEVAL = "dataset_retrieval", // 知识库检索事件
-	AGENT_END = "agent_end", // 智能体结束事件
-	STOP = "stop", // 智能体停止事件
-	ERROR = "error", // 智能体错误事件
-	TIMEOUT = "timeout", // 智能体超时事件
-	PING = "ping", // ping联通事件
-	AGENT_THINK = "agent_think", // 智能体思考事件
-	WORKFLOW_NODE_MESSAGE = "workflow_node_message" // 工作流节点执行消息
+export const ThoughtEventType = {
+	LONG_TERM_MEMORY_RECALL: "long_term_memory_recall", // 长期记忆召回事件
+	AGENT_THOUGHT : "agent_thought", // 智能体观察事件
+	AGENT_MESSAGE: "agent_message", // 智能体消息事件
+	AGENT_ACTION : "agent_action", // 智能体动作
+	DATASET_RETRIEVAL : "dataset_retrieval", // 知识库检索事件
+	AGENT_END : "agent_end", // 智能体结束事件
+	STOP : "stop", // 智能体停止事件
+	ERROR : "error", // 智能体错误事件
+	TIMEOUT : "timeout", // 智能体超时事件
+	PING : "ping", // ping联通事件
+	AGENT_THINK : "agent_think", // 智能体思考事件
+	WORKFLOW_NODE_MESSAGE : "workflow_node_message" // 工作流节点执行消息
 }
 
 // 推理过程消息
 export type ThoughtItem = {
-	event_type: ThoughtEventType,
+	event_type: string,
 	id: string,
 	position: number,
 	thought: string,
@@ -138,7 +140,7 @@ export type MsgItem = {
 	markdownElList: MarkdownElItem[]
 	error_msg?: string
 	rendered: boolean
-	thoughts?: ThoughtItem[]
+	thoughts: ThoughtItem[]
 }
 export type BaseMsgItem = {
 	body: string
@@ -219,7 +221,7 @@ export type CustomProviderCallbacks = {
 }
 
 // 聊天请求选项
-export interface ChatRequestOption {
+export type ChatRequestOption = {
 	// 应用链接令牌
 	ex_link_token?: string;
 	// 智能体ID

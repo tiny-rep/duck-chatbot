@@ -1,24 +1,24 @@
 import {reactive} from 'vue';
 import {LLMModel, Provider, DefaultLLM, LLmTokenInfo, Userinfo} from '@/chatbot/types.uts';
 import { getAppsList } from '@/api/service.uts';
+import { App, ModelConfig } from '@/api/types.uts'
 // 1. 定义左侧菜单区域下方的用户头像信息
 export const currentUser: Userinfo = reactive<Userinfo>({})
 
 // 从本地存储获取用户信息并更新 currentUser
 function updateCurrentUserFromStorage() {
   try {
-    const userInfo = uni.getStorageSync('userInfo');
-    if (userInfo) {
-      // 更新用户信息
-      currentUser._id = userInfo.end_user_id;
-      currentUser.nickname = userInfo.nickname;
-      // 如果有头像信息
-      if (userInfo.avatar_file) {
-        currentUser.avatar_file = userInfo.avatar_file;
-      } else {
-        currentUser.avatar_file = null;
-      }
-    }
+	const userInfoStr = uni.getStorageSync('userInfo') as string
+	if (userInfoStr != '') {
+		const userInfo: UTSJSONObject = JSON.parse(userInfoStr) as UTSJSONObject;
+		if (userInfo != null) {
+		  // 更新用户信息
+		  currentUser._id = userInfo.getString("end_user_id");
+		  currentUser.nickname = userInfo.getString("nickname");
+		  // 如果有头像信息
+		  currentUser.avatar_file = null;
+		}
+	}
   } catch (error) {
     console.error('获取本地用户信息失败:', error);
   }
@@ -26,6 +26,8 @@ function updateCurrentUserFromStorage() {
 
 // 2. 点击左侧菜单区域下方的用户头像信息后跳转的页面路径
 export const userCenterPage = '/uni_modules/uni-id-pages-x/pages/userinfo/userinfo?showLoginManage=true'
+
+export const serverHttpUrl = 'http://ai-demo.b-nature.cn'  // 请根据实际情况修改http://ai-demo.b-nature.cn
 
 // 3. 配置大语言模型
 /** 
@@ -42,14 +44,13 @@ const aiagentOsProvider: Provider = {
 	baseURL: "/openapi/chat",
 	async getToken(): Promise<string> {
 		// AI Agent OS 使用固定的 token
-		const userInfo = uni.getStorageSync('userInfo');
-		return userInfo.access_token;
+		const userInfo: UTSJSONObject = JSON.parse(uni.getStorageSync('userInfo') as string ) as UTSJSONObject;
+		return userInfo.getString("access_token")!;
 	}
 };
 
 // 定义 providerNameList 为 reactive 数组
 const providerNameList = reactive<string[]>([]);
-const defaultLLM = reactive<DefaultLLM>({});
 
 // 创建 llmModelMap
 const llmModelMap = new Map<string, Provider>([
@@ -61,16 +62,15 @@ const llmModelMap = new Map<string, Provider>([
 async function loadAppsList(callback?: (llm: DefaultLLM) => void) {
 	try {
 		const response = await getAppsList();
-		if (response.code === 'success' && response.data) {
+		if (response.code == 'success' && response.data != null) {
 			// 清空现有模型
 			aiagentOsProvider.models = [];
 			
 			// 添加从接口获取的模型
-			response.data.list.forEach((app: any) => {
+			response.data.list.forEach((app: App) => {
 				aiagentOsProvider.models.push({
 					name: app.name,
 					ex_link_token: app.ex_link_token,
-					model_config: app.model_config,
 					preset_prompt: app.preset_prompt,
 					description: app.description,
 					icon: app.icon,
@@ -79,26 +79,32 @@ async function loadAppsList(callback?: (llm: DefaultLLM) => void) {
 			});
 			
 			 // 更新 providerNameList
-      providerNameList.splice(0, providerNameList.length);
-      llmModelMap.forEach((_, key: string) => {
-        providerNameList.push(key);
-      });
-      
-      // 更新 defaultLLM
-      if (providerNameList.length > 0) {
-        defaultLLM.provider = providerNameList[0]!;
-        const models = llmModelMap.get(providerNameList[0])?.models;
-        if (models && models.length > 0) {
-          defaultLLM.model = models[0].name!;
-          defaultLLM.ex_link_token = models[0].ex_link_token;
-          defaultLLM.agentic_id = models[0].id;
-          defaultLLM.agentic_desc = models[0].description;
-        }
-      }
-
+			  providerNameList.splice(0, providerNameList.length);
+			  llmModelMap.forEach((_, key: string) => {
+				providerNameList.push(key);
+			  });
+			  
+			  // 更新 defaultLLM
+			  let defaultLLM:DefaultLLM = {
+				  provider: '',
+				  model: '',
+				  ex_link_token: '',
+				  agentic_id: '',
+				  agentic_desc: ''
+			  }
+			  if (providerNameList.length > 0) {
+				defaultLLM.provider = providerNameList[0]!;
+				const models = llmModelMap.get(providerNameList[0])?.models;
+				if (models != null && models.length > 0) {
+				  defaultLLM.model = models[0].name!;
+				  defaultLLM.ex_link_token = models[0].ex_link_token;
+				  defaultLLM.agentic_id = models[0].id;
+				  defaultLLM.agentic_desc = models[0].description;
+				}
+			  }
 			// 调用回调通知更新
-			if (callback) {
-				await callback(defaultLLM);
+			if (callback != null) {
+				callback(defaultLLM);
 			}
 			
 			console.log('成功加载应用列表:', aiagentOsProvider.models);
@@ -129,4 +135,4 @@ function logout() {
 }
 
 export default llmModelMap
-export { llmModelMap, type LLMModel, providerNameList, defaultLLM, loadAppsList, updateCurrentUserFromStorage, logout }
+export { llmModelMap, type LLMModel, providerNameList, loadAppsList, updateCurrentUserFromStorage, logout }

@@ -1,7 +1,0 @@
-/**
- * API服务模块入口文件
- * 统一导出所有API相关功能
- */
-
-export * from './types';
-export * from './service';

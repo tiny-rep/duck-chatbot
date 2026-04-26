@@ -10,7 +10,7 @@ import { getCustomProvider } from '@/chatbot/sdk/provider-registry.uts'
 
 export type OnMessageOptions = {
 	type?: string,
-	data?: string | boolean | number 
+	data?: string | boolean | number | OnMessageOptions
 	action?: 'set' | 'update' | 'remove' | 'add',
 	index?: number,
 	size?: number,
@@ -22,7 +22,7 @@ export type OnMessageOptions = {
 	thought_tool?: string,
 	thought_tool_input?: string,
 	thought_latency?: number
-	eventType?: EventType // 事件类型
+	eventType?: string // 事件类型
 }
 
 type BeforeUpdateMdElList = (markdownTokenList : MarkdownToken[], isParseDone: boolean) => void;
@@ -149,7 +149,7 @@ class RequestAiWorker {
 							type: "setCurrentChatState",
 							data: 'stop'
 					});
-					this.emitOnMessage({type: "setRendered",data: true} as OnMessageOptions)
+					this.emitOnMessage({type: "setRendered",data: 'true'} as OnMessageOptions)
 				}
 			} else {
 				// console.log('beforeUpdateMdElList 暂停渲染')
@@ -181,12 +181,12 @@ class RequestAiWorker {
 		const eventType = chunkObj.choices?.[0]?.event
 		
 		// 发送事件类型
-		if (eventType) {
+		if (eventType != null) {
 			// 检查事件类型是否在 EventType 枚举中
-			let validEventType: EventType | undefined = utils.strToEventType(eventType)
+			let validEventType = eventType
 			
 			// 初始化 ai_msg 对象
-			if (!this.ai_msg) {
+			if (this.ai_msg == null) {
 				this.ai_msg = {
 					thought_id: '',
 					thought_position: 0,
@@ -199,14 +199,13 @@ class RequestAiWorker {
 				};
 			}
 			
-			if (eventType !== EventType.PING) {
+			if (eventType != ThoughtEventType.PING) {
 				// 除了agent_message数据为叠加，其他均为覆盖
-				if (eventType === EventType.AGENT_MESSAGE || eventType === EventType.AGENT_THINK) {
+				if (eventType == ThoughtEventType.AGENT_MESSAGE || eventType == ThoughtEventType.AGENT_THINK) {
 					const event_id = chunk_msg?.id;
 
 					// 数据不存在则添加
-					if (!this.ai_msg.thought_id || this.ai_msg.thought_id === '' || this.ai_msg.thought_id != event_id) {
-						this.ai_msg.thought_position += 1;
+					if (this.ai_msg.thought_id == null || this.ai_msg.thought_id == '' || this.ai_msg.thought_id != event_id) {
 						this.ai_msg.thought_id = event_id;
 						this.ai_msg.eventType = validEventType;
 						this.ai_msg.thought_body = chunk_msg?.thought ?? '';
@@ -222,7 +221,7 @@ class RequestAiWorker {
 					}
 					
 					// 更新/添加answer答案
-					if (eventType === EventType.AGENT_MESSAGE) {
+					if (eventType == ThoughtEventType.AGENT_MESSAGE) {
 						// 将内容添加到msgBody
 						const thoughtContent = chunk_msg?.thought ?? '';
 						this.msgBody += thoughtContent;
@@ -231,7 +230,7 @@ class RequestAiWorker {
 							data: this.msgBody
 						});
 					}
-				} else if (eventType === EventType.ERROR) {
+				} else if (eventType == ThoughtEventType.ERROR) {
 					// 错误事件处理
 					const observation = chunk_msg?.observation ?? '';
 					this.msgBody = observation;
@@ -240,7 +239,7 @@ class RequestAiWorker {
 						type: "setMsgBody",
 						data: this.msgBody
 					});
-				} else if (eventType === EventType.TIMEOUT) {
+				} else if (eventType == ThoughtEventType.TIMEOUT) {
 					// 超时事件处理
 					this.msgBody = '当前Agent执行已超时，无法得到答案，请重试';
 					this.ai_msg.thought_observation = '当前Agent执行已超时，无法得到答案，请重试';
@@ -248,12 +247,11 @@ class RequestAiWorker {
 						type: "setMsgBody",
 						data: this.msgBody
 					});
-				} else if (eventType === EventType.AGENT_END) {
+				} else if (eventType == ThoughtEventType.AGENT_END) {
 					// 智能体结束事件处理
-					this.parseMarkdown.msgReceiveDone = true
+					this.parseMarkdown!.msgReceiveDone = true
 				} else {
 					// 处理其他类型的事件，直接填充覆盖数据
-					this.ai_msg.thought_position += 1;
 					this.ai_msg.thought_id = chunk_msg?.id;
 					this.ai_msg.eventType = validEventType;
 					this.ai_msg.thought_body = chunk_msg?.thought ?? '';
@@ -264,7 +262,7 @@ class RequestAiWorker {
 				}
 				
 				// 更新ai_msg
-				const aiMsgCopy = JSON.parse<OnMessageOptions>(JSON.stringify(this.ai_msg)) as OnMessageOptions;
+				const aiMsgCopy = JSON.stringify(this.ai_msg);
 				this.emitOnMessage({
 					type: "setAiMsg",
 					data: aiMsgCopy
@@ -368,7 +366,7 @@ class RequestAiWorker {
 							return
 						}
 						// 检查是否有conversation_id需要更新
-						if (data && data.conversation_id) {
+						if (data != null && data.conversation_id != '') {
 							this.emitOnMessage({
 								type: "updateConversationId",
 								data: data.conversation_id

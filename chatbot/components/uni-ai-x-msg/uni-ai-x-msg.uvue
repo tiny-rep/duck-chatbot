@@ -6,38 +6,40 @@
 			<view @click="toggleThoughtsVisibility" class="toggle-thoughts-btn" v-if="filteredThoughts != null && filteredThoughts.length > 0">
 				{{ showThoughts ? '隐藏运行流程' : '显示运行流程' }}
 			</view>
-			<view class="msg-root-thoughts-container" v-if="filteredThoughts != null  && filteredThoughts.length > 0">
-				<uni-collapse v-if="showThoughts" accordion="false" :collapse="true">
-					<uni-collapse-item 
-						v-for="(thought, index) in filteredThoughts" 
-						:key="thought.id"
-						:title="getEventTypeText(thought.event_type, thought)"
-						:disabled="false"
-						:open="false"
-					>
-						<view class="msg-root-thought-content">
-							<text class="msg-root-thought-text">{{ getThoughtContent(thought) }}</text>
+			<view class="msg-root-thoughts-container" v-show="showThoughts" v-if="filteredThoughts != null  && filteredThoughts.length > 0">
+				<view 
+					v-for="(thought, index) in filteredThoughts" 
+					:key="thought.id"
+				>
+					<view class="foldable-thought-item">
+						<view @click="toggleThoughtVisibility(thought.id)" class="foldable-thought-header">
+							<text class="thought-title">{{ getEventTypeText(thought.event_type, thought) }}</text>
 						</view>
-					</uni-collapse-item>
-				</uni-collapse>
-			</view>
-			<template v-for="(item, index) in markdownElList" :key="index">
-				<view v-if="item.type == 'block_quote'" class="msg-root-block-quote-box">
-					<uni-ai-text-md v-for="(blockQuote, i) in item.datasList" :key="i" :datas="blockQuote" :itemType="item.type"/>
+						<scroll-view class="foldable-thought-content" v-show="isVisible(thought.id)" :scroll-top="0" direction="vertical" >
+							<text class="msg-root-thought-text">{{ getThoughtContent(thought) }}</text>
+						</scroll-view>
+					</view>
 				</view>
-				<template v-else v-for="(datas, i) in item.datasList" :key="i">
-					<template v-for="(data, k) in datas" :key="k" v-if="['table', 'code_block', 'math', 'thematic_break', 'block_quote'].includes(item.type)">
-						<uni-ai-msg-table class="msg-root-table-box" v-if="item.type == 'table'" :table-node="data" />
-						<uni-ai-msg-code class="msg-root-code-box" v-else-if="item.type == 'code_block'" :codeTokens="data.codeTokens ?? []"  :codeText="data.text" :language="data.lang" :href="data.href" />
-						<katex-el v-else-if="item.type == 'math'" :html="data.html" :href="data.href" :width="data.width" :height="data.height" />
-						<view v-else-if="item.type == 'thematic_break'" class="msg-root-hr-box"></view>
+			</view>
+			<view class="msg-root-mdcontent" >
+				<template v-for="(item, index) in markdownElList" :key="index">
+					<view v-if="item.type == 'block_quote'" class="msg-root-block-quote-box">
+						<uni-ai-text-md v-for="(blockQuote, i) in item.datasList" :key="i" :datas="blockQuote" :itemType="item.type"/>
+					</view>
+					<template v-else v-for="(datas, i) in item.datasList" :key="i">
+						<template v-for="(data, k) in datas" :key="k" v-if="['table', 'code_block', 'math', 'thematic_break', 'block_quote'].includes(item.type)">
+							<uni-ai-msg-table class="msg-root-table-box" v-if="item.type == 'table'" :table-node="data" />
+							<uni-ai-msg-code class="msg-root-code-box" v-else-if="item.type == 'code_block'" :codeTokens="data.codeTokens ?? []"  :codeText="data.text" :language="data.lang" :href="data.href" />
+							<katex-el v-else-if="item.type == 'math'" :html="data.html" :href="data.href" :width="data.width" :height="data.height" />
+							<view v-else-if="item.type == 'thematic_break'" class="msg-root-hr-box"></view>
+						</template>
+						<uni-ai-text-md v-else :datas="datas" :itemType="item.type" :key="item.uniqueId"/>
 					</template>
-					<uni-ai-text-md v-else :datas="datas" :itemType="item.type" :key="item.uniqueId"/>
 				</template>
-			</template>
-			<template v-if="msg.markdownElList.length == 0 && msg.body != ''" >
+			</view>
+			<view v-if="msg.markdownElList.length == 0 && msg.body != ''" class="msg-root-loging-wrap" >
 				<uni-rotate-icon class="msg-root-loging-icon" />
-			</template>
+			</view>
 			<template v-if="isLastAiMsg && msg.body == ''">
 				<text v-if="state == 'stop'" class="msg-root-stop-text">回答被终止</text>
 				<text v-if="state == 'none'" class="msg-root-need-try">错误：未回复</text>
@@ -59,8 +61,6 @@
 	import uniAiMsgCode from '@/chatbot/components/uni-ai-msg-code/uni-ai-msg-code.uvue'
 	import uniAiMsgTable from '@/chatbot/components/uni-ai-msg-table/uni-ai-msg-table.uvue'
 	import katexEl from '@/chatbot/components/katex-el/katex-el.uvue'
-	import uniCollapse from '@/uni_modules/uni-collapse/components/uni-collapse/uni-collapse.vue'
-	import uniCollapseItem from '@/uni_modules/uni-collapse/components/uni-collapse-item/uni-collapse-item.vue'
 	
 	type UniAiXMsgProps = {
 		msg: MsgItem
@@ -88,7 +88,8 @@
 	const parseMdIndex = ref<number>(0)
 	
 	const state = computed<string>(() => {
-		return uniAi.currentChat!.state
+		if (uniAi.currentChat == null) return 'processing'
+		return uniAi.currentChat.state
 	})
 	
 	const isLastAiMsg = computed<boolean>(() => {
@@ -115,19 +116,19 @@
 
 	// 过滤不需要显示的事件类型
 	const filteredThoughts = computed(() => {
-		if (msg.value.thoughts != null && msg.value.thoughts.length >= 0) {
+		if (msg.value.thoughts != null && msg.value.thoughts.length > 0) {
 			let new_thoughts: ThoughtItem[] = []
-			msg.value.thoughts.map(thought => {
-				if (thought.event_type === ThoughtEventType.LONG_TERM_MEMORY_RECALL ||
-						thought.event_type === ThoughtEventType.AGENT_THOUGHT ||
-						thought.event_type === ThoughtEventType.DATASET_RETRIEVAL ||
-						thought.event_type === ThoughtEventType.AGENT_ACTION ||
-						thought.event_type === ThoughtEventType.AGENT_MESSAGE ||
-						thought.event_type === ThoughtEventType.AGENT_THINK ||
-						thought.event_type === ThoughtEventType.WORKFLOW_NODE_MESSAGE) {
-							new_thoughts.push(thought);
-						}
-			})
+			for (const thought of msg.value.thoughts) {
+				if (thought.event_type == ThoughtEventType.LONG_TERM_MEMORY_RECALL ||
+					thought.event_type == ThoughtEventType.AGENT_THOUGHT ||
+					thought.event_type == ThoughtEventType.DATASET_RETRIEVAL ||
+					thought.event_type == ThoughtEventType.AGENT_ACTION ||
+					thought.event_type == ThoughtEventType.AGENT_MESSAGE ||
+					thought.event_type == ThoughtEventType.AGENT_THINK ||
+					thought.event_type == ThoughtEventType.WORKFLOW_NODE_MESSAGE) {
+					new_thoughts.push(thought);
+				}
+			}
 			return new_thoughts;
 		} else {
 			return []
@@ -145,6 +146,18 @@
 	const toggleThoughtsVisibility = () => {
 		showThoughts.value = !showThoughts.value
 	}
+
+	// 控制各个thought的可见性
+	const visibleThoughts = reactive<UTSJSONObject>({})
+	// 检查thought是否可见
+	const isVisible = (id: string): boolean => {
+		return visibleThoughts.getBoolean(id, false) ?? false
+	}
+	
+	// 切换特定thought的可见性
+	const toggleThoughtVisibility = (id: string) => {
+		visibleThoughts[id] = !visibleThoughts.getBoolean(id, false)
+	}
 	
 	// 工作流节点消息处理函数
 	const getWfNodeMsg = (msg: ThoughtItem) => {
@@ -156,13 +169,22 @@
 			return ''
 		}
 		// @ts-ignore
-		const node_results = msgobj.getArray<UTSJSONObject>("node_results")
+		// #ifdef WEB
+		const node_results = msgobj.value.node_results
+		const node_title = node_results[0].node_data.title
+		const wf_cn_name = msgobj.wf_cn_name
+		return `${wf_cn_name}-${node_title}`
+		// #endif
+		// #ifdef APP
+		const node_value = msgobj.getJSON('value')
+		const node_results = node_value?.getArray<UTSJSONObject>("node_results")
 		const node_title = node_results![0].getJSON("node_data")!.getString("title")
 		const wf_cn_name = msgobj.getString("wf_cn_name")
 		return `${wf_cn_name}-${node_title}`
+		// #endif
 	}
 	
-	const getEventTypeTextPro = (eventType: ThoughtEventType) => {
+	const getEventTypeTextPro = (eventType: string) => {
 		let eventTypeStr = ''
 			
 		// 直接 switch 匹配，UTS 安卓 100% 不报错
@@ -206,9 +228,9 @@
 	}
 	
 	// 获取事件类型中文名称
-	const getEventTypeText = (eventType: ThoughtEventType, thought: ThoughtItem) => {
+	const getEventTypeText = (eventType: string, thought: ThoughtItem) => {
 		let eventTypeStr = getEventTypeTextPro(eventType)
-		if (eventType === ThoughtEventType.WORKFLOW_NODE_MESSAGE) {
+		if (eventType == ThoughtEventType.WORKFLOW_NODE_MESSAGE) {
 			eventTypeStr += getWfNodeMsg(thought)
 		}
 		return eventTypeStr
@@ -216,9 +238,9 @@
 	
 	// 获取思考内容
 	const getThoughtContent = (thought: ThoughtItem) => {
-		if (thought.event_type === ThoughtEventType.AGENT_THOUGHT ||
-			thought.event_type === ThoughtEventType.AGENT_MESSAGE ||
-			thought.event_type === ThoughtEventType.AGENT_THINK) {
+		if (thought.event_type == ThoughtEventType.AGENT_THOUGHT ||
+			thought.event_type == ThoughtEventType.AGENT_MESSAGE ||
+			thought.event_type == ThoughtEventType.AGENT_THINK) {
 			return thought.thought ?? '-'
 		} else {
 			return thought.observation ?? '-'
@@ -276,35 +298,69 @@
 }
 
 .msg-root-thoughts-container {
-	margin-top: 36px;
+	margin-top: 16px;
 	width: 100%;
 }
 
 .toggle-thoughts-btn {
-	position: absolute;
-	top: 0px;
-	left: 40px;
-	padding: 5px 10px;
-	border: 1px solid var(--border-secondary);
-	border-radius: 30px;
-	background-color: var(--bg-primary);
-}
-
-.msg-root-thought-content {
-	padding: 10px;
-	background-color: var(--bg-secondary);
-	border-radius: 4px;
-	margin-top: 5px;
-	max-height: 300px;
-	overflow-y: auto;
-}
-
-.msg-root-thought-text {
-	color: var(--text-secondary);
-	font-size: 14px;
-	line-height: 1.5;
-}
-
+		position: relative;
+		top: 0px;
+		left: 0px;
+		padding: 5px 10px;
+		border: 1px solid var(--border-secondary);
+		border-radius: 30px;
+		background-color: var(--bg-primary);
+	}
+	
+	
+	.foldable-thought-item {
+		margin-bottom: 8px;
+		border: 1px solid var(--border-secondary);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+	
+	.foldable-thought-header {
+		display: flex;
+		justify-content: space-between;
+		padding: 6px 10px;
+		background-color: var(--bg-tertiary);
+		transition: background-color 0.3s;
+	}
+	
+	.foldable-thought-header:active {
+		background-color: var(--bg-hover);
+	}
+	
+	.thought-title {
+		font-weight: 500;
+		color: var(--text-primary);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	
+	.arrow-icon {
+		transition: transform 0.3s;
+		color: var(--text-tertiary);
+	}
+	
+	.arrow-icon.rotated {
+		transform: rotate(180deg);
+	}
+	
+	.foldable-thought-content {
+		padding: 16px;
+		border-top: 1px solid var(--border-secondary);
+		background-color: var(--bg-secondary);
+		max-height: 300rpx;
+	}
+	
+	.msg-root-thought-text {
+		color: var(--text-secondary);
+		font-size: 14px;
+		line-height: 1.5;
+	}
+	
 .msg-root-think-content-text {
 	text-align: left;
 	color: var(--text-tertiary);
@@ -343,15 +399,16 @@
 
 .msg-root-table-box,
 .msg-root-code-box,
-.msg-root-hr-box,
 .msg-root-think-content,
 .msg-root-block-paragraph-box,
 .msg-root-block-quote-box {
 	width: 100%;
 	margin: 5px 0;
-	word-wrap: break-word;
-  word-break: break-all;
-  white-space: normal;
+    white-space: normal;
+}
+.msg-root-hr-box {
+	width: 100%;
+	margin: 5px 0;
 }
 
 .msg-root-hr-box {
@@ -366,5 +423,9 @@
 	padding: 5px;
 	background: var(--bg-secondary);
 	margin-bottom: 10px;
+}
+.msg-root-loging-wrap,
+.msg-root-mdcontent {
+	width: 100%;
 }
 </style>

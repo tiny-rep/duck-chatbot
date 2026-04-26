@@ -1,5 +1,6 @@
-import { CustomProviderAdapter, RequestAiCoMessage, CustomProviderCallbacks, Chunk, ChatRequestOption } from '@/chatbot/types.uts';
+import { CustomProviderAdapter, RequestAiCoMessage, CustomProviderCallbacks, Chunk, ChatRequestOption, Provider, TextParse } from '@/chatbot/types.uts';
 import utils from '@/chatbot/sdk/utils.uts';
+import { serverHttpUrl } from  '@/chatbot/config.uts'
 
 // 解析流式数据
 function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) => void, errorCallback : (err : UTSJSONObject) => void, doneCallback : () => void) {
@@ -22,26 +23,26 @@ function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) =
 					data = line.slice(5).trim()
 				}
 
-				if (line === '') {
-					if (event !== '' && data !== '') {
+				if (line == '') {
+					if (event != '' && data != '') {
 						// 处理完整的事件数据
             try {
               // 解析数据
-              const agentData = JSON.parse(data);
+              const agentData: UTSJSONObject = JSON.parse<UTSJSONObject>(data)!;
               // todo: 格式不对，要调整
               // 转换为系统需要的 Chunk 格式
               const chunk: Chunk = {
                 choices: [{
                   delta: {
-                    content: agentData.answer ?? '',
+                    content: agentData.getString('answer') ?? '',
                   },
-                  id: agentData.id,
+                  id: agentData.getString('id') ?? '',
                   position: 0,
-                  thought: agentData?.thought,
-                  observation: agentData?.observation,
-                  tool: agentData?.tool,
-                  tool_input: agentData?.tool_input,
-                  latency: agentData.latency,
+                  thought: agentData.getString('thought') ?? '',
+                  observation: agentData.getString('observation') ?? '',
+                  tool: agentData.getString('tool') ?? '',
+                  tool_input: agentData.getString('tool_input') ?? '',
+                  latency: agentData.getNumber('latency') ?? 0,
                   event: event // 添加 event 字段
                 }]
               };
@@ -99,7 +100,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
      * @param callbacks 回调函数
      * @param options 聊天请求选项
      */
-    async request(messages: RequestAiCoMessage[], model: string, chat_id: string, callbacks: CustomProviderCallbacks, options?: ChatRequestOption): Promise<boolean> {
+    override async request(messages: RequestAiCoMessage[], model: string, chat_id: string, callbacks: CustomProviderCallbacks, options?: ChatRequestOption): Promise<boolean> {
         const tmpToken = await this.provider.getToken()
         
         return new Promise<boolean>((resolve) => {
@@ -112,14 +113,14 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
                 // 从后往前遍历，找到最新一条用户消息
                 for (let i = messages.length - 1; i >= 0; i--) {
                     const message = messages[i];
-                    if (message.role === 'user') {
-                        if (typeof message.content === 'string') {
+                    if (message.role == 'user') {
+                        if (typeof message.content == 'string') {
                             query = message.content;
                         } else if (Array.isArray(message.content)) {
                             // 处理多模态内容，只取文本部分
-                            const textContent = message.content.find(item => item.type === 'text');
-                            if (textContent) {
-                                query = textContent.text;
+                            const textContent = message.content.find(item => item.type == 'text');
+                            if (textContent instanceof TextParse) {
+                                query = (textContent as TextParse).text;
                             }
                         }
                         // 找到后立即退出循环
@@ -129,22 +130,24 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
             }
 
             // 构建请求数据，根据 API 文档的要求
-            const requestData = {
+            const requestData: UTSJSONObject = {
                 end_user_id: options?.end_user_id, // 使用options中的end_user_id或默认值
                 app_id: options?.agentic_id, // 使用options中的agentic_id作为应用的id
-                conversation_id: chat_id && !chat_id.startsWith('new_') ? chat_id : undefined, // 如果是临时ID，不传递conversation_id
+                conversation_id: chat_id != null && !chat_id.startsWith('new_') ? chat_id : null, // 如果是临时ID，不传递conversation_id
                 query: query,
                 stream: true
             };
 
             // 使用 uni.request 发起请求，参考 requestAlServer 方法的实现
+			const req_url = `${serverHttpUrl}/api/web-apps/${options?.ex_link_token ?? ''}/ex-link/chat`
+			console.log(requestData)
             this.requestTask = uni.request({
                 // API 文档中指定的接口地址
-                url: `/api/web-apps/${options?.ex_link_token ?? ''}/ex-link/chat`,
+                url: req_url,
                 method: 'POST',
                 dataType: 'text',
                 data: requestData,
-                timeout: 10000 * 60 * 10 // 请求超时时长
+                timeout: 10000 * 60 * 10, // 请求超时时长
                 // @ts-ignore
                 enableChunked: true,
                 header: {
@@ -153,68 +156,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
                     'Authorization': `Bearer ${tmpToken}` // 需要根据实际情况修改
                 },
                 success: (res: RequestSuccess<any>) => {
-                    // console.log('request success', res)
-                    if (!res.data) {
-                        // 非流式数据处理
-                        try {
-                            const strData = typeof res.data == 'string' ? res.data : JSON.stringify(res.data);
-                            const response = JSON.parse(strData);
-                            
-                            if (response.code === 'success' && response.data) {
-                                // 转换为系统需要的 Chunk 格式
-                                const chunk: Chunk = {
-                                    choices: [{
-                                        message: {
-                                            content: response.data.answer ?? ''
-                                        }
-                                    }]
-                                };
-                                callbacks.onChunk?.(chunk);
-                                debugger
-                                // 如果是新会话，获取后端返回的conversation_id
-                                if (chat_id && chat_id.startsWith('new_') && response.data.conversation_id) {
-                                    // 通过onDone回调传递conversation_id
-                                    callbacks.onDone?.({
-                                        conversation_id: response.data.conversation_id
-                                    } as UTSJSONObject);
-                                } else {
-                                    callbacks.onDone?.({} as UTSJSONObject);
-                                }
-                                resolveFn({} as UTSJSONObject);
-                            } else {
-                                const errInfo: UTSJSONObject = {
-                                    errCode: -102,
-                                    errMsg: response.message || '请求失败'
-                                };
-                                callbacks.onError?.(errInfo);
-                                rejectFn(errInfo);
-                            }
-                        } catch (e) {
-                            console.error('JSON parse error:', e);
-                            const errInfo: UTSJSONObject = {
-                                errCode: -101,
-                                errMsg: '数据解析失败'
-                            };
-                            callbacks.onError?.(errInfo);
-                            rejectFn(errInfo);
-                        }
-                    } else {
-                        if (res.data instanceof UTSJSONObject) {
-                            // 部分情况下（内容包含违禁词时），流式响应未返回数据，就立即结束请求。此时错误信息会放在 data 中
-                            const error = res.data.getJSON('error');
-                            if (error != null) {
-                                // console.log('error', error)
-                                const errInfo: UTSJSONObject = {
-                                    errCode: error.getString('code', 'unknown'),
-                                    errMsg: error.getString('message', '未知错误')
-                                };
-                                callbacks.onError?.(errInfo);
-                                rejectFn(errInfo);
-                                return;
-                            }
-                        }
-                        resolveFn({} as UTSJSONObject);
-                    }
+                    //console.log('request success', res)
                 },
                 fail: (err: RequestFail) => {
                     console.error('request fail', err);
@@ -224,11 +166,14 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
                     };
                     rejectFn(errInfo);
                     callbacks.onError?.(errInfo);
-                }
+                },
+				complete: (option: any) => {
+					console.log('completed')
+				}
             });
 
             // 处理流式响应
-            if (this.requestTask) {
+            if (this.requestTask != null) {
                 // @ts-ignore
                 this.requestTask.onChunkReceived((chunk: RequestTaskOnChunkReceivedListenerResult) => {
                     // 使用与 requestAlServer 相同的 parseChunkData 函数解析数据
@@ -257,7 +202,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
      * 中止请求
      */
     abort(): void {
-        if (this.requestTask) {
+        if (this.requestTask !=null ) {
             this.requestTask.abort();
             this.requestTask = null;
         }
