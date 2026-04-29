@@ -27,7 +27,6 @@ function updateCurrentUserFromStorage() {
 // 2. 点击左侧菜单区域下方的用户头像信息后跳转的页面路径
 export const userCenterPage = '/uni_modules/uni-id-pages-x/pages/userinfo/userinfo?showLoginManage=true'
 
-export const serverHttpUrl = 'http://ai-demo.b-nature.cn'  // 请根据实际情况修改http://ai-demo.b-nature.cn
 
 // 3. 配置大语言模型
 /** 

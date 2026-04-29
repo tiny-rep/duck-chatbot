@@ -136,11 +136,10 @@ class UniAi {
 			};
 			this.chat.datas.push(newChat);
 		}
-		console.log(this.chat.datas)
 		// 选中新创建的会话
 		nextTick(() => {
 			if(this.chat.datas != null) {
-				this.chat.activeId = this.chat.datas[this.chat.datas.length - 1].id
+				this.chat.activeId = this.chat.datas[0].id
 			}
 		})
 	}
@@ -166,8 +165,8 @@ class UniAi {
 				const index = uniAi.chat.datas.findIndex((item) => item.id == chatId)
 				uniAi.chat.datas.splice(index, 1)
 			})
-		} catch (error) {
-			console.error('删除会话失败:', error.message);
+		} catch (e) {
+			console.log('删除会话失败:', e);
 		}
 	}
 		
@@ -186,13 +185,6 @@ class UniAi {
 		// 注册 AI Agent OS 适配器
 		this.registerAiAgentOsAdapter();
 		
-		// 监听会话切换，加载历史消息
-		watch(():string => { return this.chat.activeId }, async (newChatId: string) => {
-			if (newChatId != null && !newChatId.startsWith('new_') && this.currentUser != null && this.currentUser._id != null) {
-				// 加载历史消息
-				await this.loadHistoryMessages(newChatId, this.currentUser._id!);
-			}
-		}, { immediate: true });
 
 		// 获取 setting
 		uni.getStorage({
@@ -233,7 +225,16 @@ class UniAi {
 			})
 		}, { deep: true, immediate: true })
 	}
-
+	
+	// 设置对话选中项
+	setActiveChatId(activeChatId: string) {
+		this.chat.activeId = activeChatId
+		if (activeChatId != null && !activeChatId.startsWith('new_') && this.currentUser != null && this.currentUser._id != null) {
+			// 加载历史消息
+			this.loadHistoryMessages(activeChatId, this.currentUser._id!);
+		}
+	}
+	
 	// 更新会话标题 和 会话更新时间
 	updateChatUpdateTime(chatId: string) {
 		const chat = this.chat.datas.find(chat => chat.id == chatId)
@@ -244,14 +245,7 @@ class UniAi {
 		}
 	}
 	async updateChatTitle(chatId: string, title: string): Promise<void> {
-		try {
-			// 调用接口更新会话标题
-			const response = await updateConversationName(chatId, this.currentUser._id ?? 'tmp_user_', title, null);
-			if (response.code !== 'success') {
-				console.error('更新会话标题失败:', response.message);
-				throw new Error('更新会话标题失败');
-			}
-			
+		try {			
 			const chat = this.chat.datas.find(chat => chat.id == chatId)
 			if (chat != null) {
 				chat.title = title
@@ -281,11 +275,6 @@ class UniAi {
 			thoughts: [] as ThoughtItem[]
 		} as MsgItem
 		msgList.push(newMsg)
-		if (msg.from_uid != 'uni-ai') {
-			// 把用户提的问题 内容的前 20 个字符作为标题，去掉换行符
-			const title = msg.body.substring(0, 20).replace(/\n/g, '')
-			this.currentChat!.title = title
-		}
 		// 更新会话的更新时间
 		this.updateChatUpdateTime(this.currentChat!.id)
 		// 返回响应式的 msg
@@ -460,13 +449,12 @@ class UniAi {
 				}],
 				['setAiMsg', () => {
 					// 更新aiMsgItem的thoughts数组，根据thought_id查找或添加thought项
-					// #ifdef WEB
-					const aiMsgData = data as OnMessageOptions
-					// #endif
-					// #ifdef APP
 					const aiMsgData = JSON.parse<OnMessageOptions>(data as string);
-					// #endif
 					if (aiMsgData != null) {
+						// 更新会话编号
+						if (this.currentChat!= null && this.currentChat.id.startsWith('new_') && aiMsgData.conversation_id != null && aiMsgData.conversation_id != '') {
+							this.updateConversationIdFun(aiMsgData.conversation_id)
+						}
 						// 初始化thoughts数组（如果不存在）
 						if (aiMsgItem.thoughts == null) {
 							aiMsgItem.thoughts = [];
@@ -485,7 +473,6 @@ class UniAi {
 						};
 						
 						const thoughtIdx = aiMsgItem.thoughts.findIndex((item) => item?.id == aiMsgData.thought_id);
-						
 						if (thoughtIdx == -1) {
 							// 数据不存在则添加
 							aiMsgItem.thoughts.push(thoughtObj);
@@ -493,6 +480,7 @@ class UniAi {
 							// 数据存在则直接替换整个对象
 							aiMsgItem.thoughts[thoughtIdx] = thoughtObj;
 						}
+						
 					}
 				}],
 				['setCurrentChatState', () => {
@@ -510,22 +498,7 @@ class UniAi {
 				}],
 				['updateConversationId', () => {
 					// 更新会话ID，处理新会话的情况
-					const newConversationId = data as string
-					if (newConversationId != null && this.currentChat != null) {
-						// 查找会话在列表中的索引
-						const chatIndex = this.chat.datas.findIndex(chat => chat.id == this.currentChat!.id)
-						if (chatIndex != -1) {
-							// 更新会话ID
-							this.chat.datas[chatIndex].id = newConversationId
-							// 更新当前活跃会话ID
-							this.chat.activeId = newConversationId
-							// 更新消息列表中的chat_id
-							this.currentChat.msgList.forEach(msg => {
-								msg.chat_id = newConversationId
-							})
-							console.log('会话ID更新成功:', newConversationId)
-						}
-					}
+					this.updateConversationIdFun(data as string)
 				}]
 			])
 			const handler = messageHandlerMap.get(message.type)
@@ -536,6 +509,24 @@ class UniAi {
 			}
 
 		})
+	}
+	
+	updateConversationIdFun(newConversationId: string) {
+		if (newConversationId != null && this.currentChat != null) {
+			// 查找会话在列表中的索引
+			const chatIndex = this.chat.datas.findIndex(chat => chat.id == this.currentChat!.id)
+			if (chatIndex != -1) {
+				// 更新当前活跃会话ID
+				this.chat.activeId = newConversationId
+				// 更新会话ID
+				this.chat.datas[chatIndex].id = newConversationId
+				// 更新消息列表中的chat_id
+				this.chat.datas[chatIndex].msgList.forEach(msg => {
+					msg.chat_id = newConversationId
+				})
+				console.log('会话ID更新成功:', newConversationId)
+			}
+		}
 	}
 	
 	// 拿到消息列表，用于发给 AI 
@@ -747,7 +738,7 @@ class UniAi {
 					this.addChat(false);
 				} else {
 					// 默认选中第一个会话
-					this.chat.activeId = this.chat.datas[0].id;
+					this.setActiveChatId(this.chat.datas[0].id)
 				}
 			} else {
 				console.error('加载历史会话列表失败: 接口返回错误', response.message);

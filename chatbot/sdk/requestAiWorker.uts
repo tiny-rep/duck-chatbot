@@ -21,7 +21,8 @@ export type OnMessageOptions = {
 	thought_observation?: string,
 	thought_tool?: string,
 	thought_tool_input?: string,
-	thought_latency?: number
+	thought_latency?: number,
+	conversation_id?: string, // 会话Id
 	eventType?: string // 事件类型
 }
 
@@ -195,6 +196,7 @@ class RequestAiWorker {
 					thought_tool: '',
 					thought_tool_input: '',
 					thought_latency: 0,
+					conversation_id: '',
 					eventType: validEventType
 				};
 			}
@@ -213,6 +215,7 @@ class RequestAiWorker {
 						this.ai_msg.thought_tool = chunk_msg?.tool ?? '';
 						this.ai_msg.thought_tool_input = chunk_msg?.tool_input ?? '';
 						this.ai_msg.thought_latency = chunk_msg?.latency ?? 0;
+						this.ai_msg.conversation_id = chunk_msg?.conversation_id ?? '';
 					} else {
 						// 存在数据则叠加
 						this.ai_msg.thought_body = (this.ai_msg.thought_body ?? '') + (chunk_msg?.thought ?? '');
@@ -259,6 +262,7 @@ class RequestAiWorker {
 					this.ai_msg.thought_tool = chunk_msg?.tool ?? '';
 					this.ai_msg.thought_tool_input = chunk_msg?.tool_input ?? '';
 					this.ai_msg.thought_latency = chunk_msg?.latency ?? 0;
+					this.ai_msg.conversation_id = chunk_msg?.conversation_id ?? '';
 				}
 				
 				// 更新ai_msg

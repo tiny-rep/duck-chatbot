@@ -4,7 +4,7 @@
  */
 
 import type { ApiResponse, RequestConfig, PaginationData, Message, App, Conversation } from './types';
-import { serverHttpUrl } from  '@/chatbot/config.uts'
+import { serverHttpUrl } from  '@/config.uts'
 
 // 基础API地址
 const BASE_URL = `${serverHttpUrl}/api`;

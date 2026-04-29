@@ -73,7 +73,7 @@
 	}
 	
 	const setActiveChat = (chat: ChatItem) => {
-		uniAi.chat.activeId = chat.id
+		uniAi.setActiveChatId(chat.id)
 		closeMenu()
 	}
 	

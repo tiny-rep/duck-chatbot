@@ -1,6 +1,6 @@
 import { CustomProviderAdapter, RequestAiCoMessage, CustomProviderCallbacks, Chunk, ChatRequestOption, Provider, TextParse } from '@/chatbot/types.uts';
 import utils from '@/chatbot/sdk/utils.uts';
-import { serverHttpUrl } from  '@/chatbot/config.uts'
+import { serverHttpUrl } from  '@/config.uts'
 
 // 解析流式数据
 function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) => void, errorCallback : (err : UTSJSONObject) => void, doneCallback : () => void) {
@@ -43,6 +43,7 @@ function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) =
                   tool: agentData.getString('tool') ?? '',
                   tool_input: agentData.getString('tool_input') ?? '',
                   latency: agentData.getNumber('latency') ?? 0,
+				  conversation_id: agentData.getString('conversation_id') ?? '',
                   event: event // 添加 event 字段
                 }]
               };
@@ -140,7 +141,7 @@ export class AiAgentOsAdapter extends CustomProviderAdapter {
 
             // 使用 uni.request 发起请求，参考 requestAlServer 方法的实现
 			const req_url = `${serverHttpUrl}/api/web-apps/${options?.ex_link_token ?? ''}/ex-link/chat`
-			console.log(requestData)
+
             this.requestTask = uni.request({
                 // API 文档中指定的接口地址
                 url: req_url,

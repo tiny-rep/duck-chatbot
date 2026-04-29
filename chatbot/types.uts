@@ -80,7 +80,8 @@ export type ChunkChoice = {
 	observation: string,
 	tool: string,
 	tool_input: string,
-	latency: number
+	latency: number,
+	conversation_id: string
 }
 type Output = {
 	text: string
