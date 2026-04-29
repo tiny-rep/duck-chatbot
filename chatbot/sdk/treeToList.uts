@@ -60,6 +60,10 @@ class TreeToList {
                 item.className = (item.className == null ? '' : item.className + ' ') + 'depth-' + item.depth
             }
             
+			if (item.className == 'image' && item.text == null) {
+				item.text = '[图片]'
+			}
+			
             if (parent.type == 'list'){
                 // 插入换行
                 const newItem: MarkdownToken = {
@@ -102,7 +106,9 @@ class TreeToList {
                     list.push(newItem)
                 }
             }
-            // 拿到子节点
+            
+			
+			// 拿到子节点
             const nextItems = item.tokens != null && (item.tokens as MarkdownToken[]).length > 0 ? item.tokens : item.items != null && item.items.length > 0 ? item.items : []
             if (nextItems.length > 0) {
                 let nextList = this.getLeafNodes(nextItems, item)

@@ -30,6 +30,12 @@
 					"style": {
 						"navigationBarTitleText": "选择文本"
 					}
+				},
+				{
+					"path": "common/webview/webview",
+					"style": {
+						"navigationBarTitleText": "附件展示页"
+					}
 				}
 			]
 		}
