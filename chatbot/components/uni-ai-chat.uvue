@@ -616,7 +616,8 @@
 
 /* #ifdef MP-WEIXIN */
 .chat-box-nav-bar {
-	padding-top: calc(var(--status-bar-height) + 35px);
+	// padding-top: calc(var(--status-bar-height) + 15px);
+	padding-top: 15px;
 }
 /* #endif */
 
