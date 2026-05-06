@@ -174,7 +174,7 @@ export async function getConversationMessages(conversationId: string, endUserId:
     } as RequestConfig);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -192,7 +192,7 @@ export async function deleteConversation(conversationId: string, endUserId: stri
     const response: UTSJSONObject = await post(`/conversations/${conversationId}/delete/ex-link/${endUserId}`);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -210,7 +210,7 @@ export async function stopChatWithExLinkToken(ex_link_token: string, conversatio
     const response: UTSJSONObject = await post(`/web-apps/${ex_link_token}/ex-link/chat/${conversationId}/stop`);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -235,7 +235,7 @@ export async function deleteMessage(conversationId: string, messageId: string, e
     const response: UTSJSONObject = await post(`/conversations/${conversationId}/messages/${messageId}/delete/ex-link/${endUserId}`, config);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -264,7 +264,7 @@ export async function updateConversationName(conversationId: string, endUserId: 
     const response: UTSJSONObject = await post(`/conversations/${conversationId}/name/ex-link/${endUserId}`, config);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -293,7 +293,7 @@ export async function toggleConversationPinned(conversationId: string, endUserId
     const response: UTSJSONObject = await post(`/conversations/${conversationId}/pinned/ex-link/${endUserId}`, config);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -323,7 +323,7 @@ export async function getAppsList(currentPage: number = 1, pageSize: number = 20
     } as RequestConfig);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -344,7 +344,7 @@ export async function getHotApps(accessToken?: string): Promise<ApiResponse<obje
     const response: UTSJSONObject = await get('/openapi/apps/ex-link/hot', config);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -373,7 +373,7 @@ export async function autoLogin(nickName: string, appId: string, unionId: string
     const response: UTSJSONObject = await post('/openapi/auth/auto-login', config);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -401,7 +401,7 @@ export async function loginPwd(nickName: string, pwd: string): Promise<ApiRespon
     const response: UTSJSONObject = await post('/openapi/auth/login-pwd', config);
     
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP
@@ -425,9 +425,9 @@ export async function getAppConversations(exLinkToken: string, endUserId: string
     const response: UTSJSONObject = await get(`/web-apps/${exLinkToken}/conversations/${endUserId}/ex-link`, {
         params: params
     } as RequestConfig);
-    
+
     // 使用parse方法转换类型
-	// #ifdef WEB
+	// #ifdef WEB||MP-WEIXIN
 	return response
 	// #endif
 	// #ifdef APP

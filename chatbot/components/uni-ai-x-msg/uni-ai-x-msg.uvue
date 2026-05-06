@@ -169,7 +169,7 @@
 			return ''
 		}
 		// @ts-ignore
-		// #ifdef WEB
+		// #ifdef WEB||MP-WEIXIN
 		const node_results = msgobj.value.node_results
 		const node_title = node_results[0].node_data.title
 		const wf_cn_name = msgobj.wf_cn_name

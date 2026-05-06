@@ -46,13 +46,11 @@
 <script setup lang="uts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { loginPwd } from '@/api/service.uts';
-import { uniAi } from '@/chatbot/sdk';
 
 // 状态管理
 const activeTab = ref(0);
 const nickname = ref('');
 const password = ref('');
-
 
 // 账号密码登录
 async function login() {
