@@ -1,11 +1,37 @@
 import { CustomProviderAdapter, RequestAiCoMessage, CustomProviderCallbacks, Chunk, ChatRequestOption, Provider, TextParse } from '@/chatbot/types.uts';
 import utils from '@/chatbot/sdk/utils.uts';
 import { serverHttpUrl } from  '@/config.uts'
+// #ifdef MP-WEIXIN
+function mpDecoder(buffer) {
+	if (buffer instanceof ArrayBuffer) {
+		buffer = new Uint8Array(buffer);
+	}
+
+	if (!buffer || buffer.length === 0) return '';
+
+	let str = '';
+	const len = buffer.length;
+	for (let i = 0; i < len; i++) {
+		str += String.fromCharCode(buffer[i]);
+	}
+
+	try {
+		return decodeURIComponent(escape(str));
+	} catch (e) {
+		return str;
+	}
+}
+// #endif
 
 // 解析流式数据
 function parseChunkData(chunkData : ArrayBuffer, callback : (chunkObj : Chunk) => void, errorCallback : (err : UTSJSONObject) => void, doneCallback : () => void) {
 	utils.uniGetDispatcher("io", () => {
+		// #ifdef MP-WEIXIN
+		const chunkText : string = mpDecoder(chunkData)
+		// #endif
+		// #ifndef MP-WEIXIN
 		const chunkText : string = new TextDecoder().decode(chunkData)
+		// #endif
 		// console.error('chunkText======', chunkText)
 		const lines : string[] = chunkText.split('\n')
 		// console.error('lines======', lines, lines.length)
