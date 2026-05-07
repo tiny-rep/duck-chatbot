@@ -153,7 +153,7 @@ export function parseLineCode(parseLineCodeCallBack: ParseLineCodeCallBack, code
 		const res: ParseLineCodeRes = {
 			tokens: [],
 			language: language,
-			// #ifdef WEB||MP-WEIXIN
+			// #ifndef APP
 			error: (error as any).message
 			// #endif
 			// #ifndef WEB
