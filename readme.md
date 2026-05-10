@@ -28,15 +28,15 @@ Duck-Chatbot 是一个面向行业场景的智能应用平台，支持快速构�
 
 ## 安卓(视频链接：https://v.douyin.com/zG5WbrbFztk/)
 
-![安卓](doc/20260510-aiagent-mobile-app.png)
+![安卓](http://ocimg.b-nature.cn/ai-prod-ppt/20260510-aiagent-mobile-app.png)
 
 ## H5(视频链接：https://v.douyin.com/-_swyRj5wuY/)
 
-![h5](doc/20260510-aiagent-mobile-h5.png)
+![h5](http://ocimg.b-nature.cn/ai-prod-ppt/20260510-aiagent-mobile-h5.png)
 
 ## 微信小程序(视频链接：https://v.douyin.com/z3GmpmHRako/)
 
-![微信小程序](doc/20260510-aiagent-mobile-mp-wechat.png)
+![微信小程序](http://ocimg.b-nature.cn/ai-prod-ppt/20260510-aiagent-mobile-mp-wechat.png)
 
 
 
